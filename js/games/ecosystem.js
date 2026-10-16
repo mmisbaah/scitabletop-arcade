@@ -1,8 +1,11 @@
-// GAME 2: Ecosystem Builder. Keep producers, herbivores and predators in ratio.
+// GAME 2: Ecosystem Builder. Energy flows up a 3-level food web, losing ~90%
+// at each step. Keep every level fed for 10 seasons.
 
 import { $, showToast, logTo, clearLog, setMeter, pick } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
-import { SPECIES, DRAW_WEIGHTS, ECO_CONFIG as CFG } from '../data/species.js';
+import { teach, resetFacts } from '../core/facts.js';
+import { byDifficulty } from '../core/difficulty.js';
+import { SPECIES, DRAW_WEIGHTS, EVENTS, ECO_FACTS, ECO_CONFIG as CFG } from '../data/species.js';
 
 const DRAW_POOL = Object.entries(DRAW_WEIGHTS).flatMap(([name, n]) => Array(n).fill(name));
 const TIERS = ['producer', 'herbivore', 'predator'];
@@ -13,10 +16,13 @@ const TIER_STYLE = {
 };
 
 let state;
+let onGameOver = () => {};
+export function setGameOverHandler(fn) { onGameOver = fn; }
 
 const isKudzu = (name) => SPECIES[name].invasive;
 const natives = (tier) => state.board[tier].filter((n) => !isKudzu(n));
 const kudzuCount = () => state.board.producer.filter(isKudzu).length;
+const sum = (list, key) => list.reduce((t, n) => t + (SPECIES[n][key] || 0), 0);
 
 function removeRandom(tier, filter = () => true) {
     const idxs = state.board[tier].map((n, i) => (filter(n) ? i : -1)).filter((i) => i >= 0);
@@ -29,6 +35,29 @@ function diversity() {
     return Math.min(100, distinct.size * 12.5);
 }
 
+// Where the energy goes this season, following the 10% rule.
+function energyReport() {
+    const plants = natives('producer');
+    const clovers = plants.filter((n) => SPECIES[n].fertilizes).length;
+    const cloverEnergy = sum(plants.filter((n) => SPECIES[n].fertilizes), 'energy');
+    let plantEnergy = cloverEnergy + (sum(plants, 'energy') - cloverEnergy) * (1 + 0.1 * clovers);
+    if (state.board.predator.includes('WOLF')) plantEnergy *= 1 + CFG.wolfBoost;
+    if (state.drought) plantEnergy *= 0.6;
+
+    const herbivores = state.board.herbivore;
+    const herbFood = plantEnergy * CFG.transfer;
+    const herbNeed = sum(herbivores, 'need');
+    const herbEaten = Math.min(herbFood, herbNeed);
+
+    // Predators can only eat herbivores that are on someone's menu.
+    const menu = new Set(state.board.predator.flatMap((n) => SPECIES[n].diet));
+    const edibleNeed = sum(herbivores.filter((n) => menu.has(n)), 'need');
+    const predFood = herbNeed ? herbEaten * (edibleNeed / herbNeed) * CFG.transfer : 0;
+    const predNeed = sum(state.board.predator, 'need');
+
+    return { plantEnergy, herbFood, herbNeed, predFood, predNeed };
+}
+
 export function init() {
     state = {
         season: 1,
@@ -36,9 +65,12 @@ export function init() {
         plays: CFG.playsPerSeason,
         board: structuredClone(CFG.startBoard),
         hand: [...CFG.startHand],
+        drought: false,
+        lastEvent: 'NONE',
         over: false,
     };
-    clearLog('eco-log', 'Season 1. Your meadow has plants and grazers, but no predators yet.');
+    clearLog('eco-log', 'Season 1. Plants and grazers, but no predators yet.');
+    resetFacts('ecosystem', ECO_FACTS.intro);
     render();
 }
 
@@ -49,30 +81,43 @@ function render() {
     $('eco-plays').textContent = state.plays;
 
     const hasWolf = state.board.predator.includes('WOLF');
-    $('eco-keystone').textContent = hasWolf ? 'WOLF' : 'MISSING';
+    $('eco-keystone').textContent = hasWolf ? 'WOLF +15%' : 'MISSING';
     $('eco-keystone').className = hasWolf ? 'text-emerald-400' : 'text-rose-400';
     const kz = kudzuCount();
     $('eco-invasive').textContent = kz ? `KUDZU x${kz}` : 'NONE';
     $('eco-invasive').className = kz ? 'text-rose-400' : 'text-slate-500';
+    $('eco-event').textContent = state.lastEvent;
+
+    const e = energyReport();
+    const fed = (food, need) => (need === 0 ? 'text-slate-500' : food >= need ? 'text-emerald-400' : 'text-rose-400');
+    $('eco-energy-producer').innerHTML = `<span class="text-yellow-300">${Math.round(e.plantEnergy)}</span> energy made`;
+    $('eco-energy-herbivore').innerHTML = `food <span class="${fed(e.herbFood, e.herbNeed)}">${Math.round(e.herbFood)}</span> / need ${e.herbNeed}`;
+    $('eco-energy-predator').innerHTML = `food <span class="${fed(e.predFood, e.predNeed)}">${Math.round(e.predFood)}</span> / need ${e.predNeed}`;
 
     for (const tier of TIERS) {
         $(`eco-tier-${tier}`).innerHTML = state.board[tier].map((name, i) => {
+            const sp = SPECIES[name];
             const style = isKudzu(name) ? 'border-lime-400 text-lime-300 bg-lime-950' : `${TIER_STYLE[tier]} bg-slate-900`;
+            const stat = sp.tier === 'producer' ? `+${sp.energy}` : `-${sp.need}`;
             return `
             <button data-action="ecosystem:remove" data-tier="${tier}" data-arg="${i}"
-                class="w-full text-left px-2 py-1 border-2 ${style} font-pixel text-[10px] hover:border-yellow-400 flex justify-between">
-                <span>${name}</span><span>${SPECIES[name].icon}</span>
+                class="w-full text-left px-2 py-1 border-2 ${style} font-pixel text-[10px] hover:border-yellow-400 flex justify-between items-center gap-1"
+                title="${sp.diet ? `Eats: ${sp.diet.join(', ')}` : ''}">
+                <span><span class="text-base not-italic">${sp.icon}</span> ${name}</span><span class="text-[8px] text-slate-400">${isKudzu(name) ? 'INEDIBLE' : stat}</span>
             </button>`;
         }).join('') || `<span class="font-pixel text-[9px] text-slate-600">EMPTY</span>`;
     }
 
     $('eco-hand').innerHTML = state.hand.map((name, i) => {
+        const sp = SPECIES[name];
         const kz = isKudzu(name);
+        const detail = sp.tier === 'producer' ? `${sp.energy} ENERGY` : sp.diet ? `EATS ${sp.diet.length} PREY` : `NEEDS ${sp.need}`;
         return `
         <button data-action="ecosystem:play" data-arg="${i}"
-            class="arcade-btn ${kz ? 'bg-lime-900 text-lime-200' : 'bg-slate-950 text-yellow-300'} hover:bg-slate-800 text-[10px]"
-            title="${kz ? 'Burn this invasive seed (1 play) or it invades at season end' : `Deploy as ${SPECIES[name].tier}`}">
-            ${kz ? 'BURN KUDZU' : `+ ${name}`}
+            class="arcade-btn ${kz ? 'bg-lime-900 text-lime-200' : 'bg-slate-950 text-yellow-300'} hover:bg-slate-800 text-[10px] flex-col items-start"
+            title="${kz ? 'Burn this invasive seed (1 play) or it invades at season end' : sp.diet ? `Eats: ${sp.diet.join(', ')}` : `Deploy as ${sp.tier}`}">
+            <span>${sp.icon} ${kz ? 'BURN KUDZU' : `+ ${name}`}</span>
+            <span class="text-[8px] text-slate-400 normal-case">${kz ? 'OR IT INVADES' : detail}</span>
         </button>`;
     }).join('') || `<span class="font-pixel text-[10px] text-slate-500">NO RESERVES</span>`;
 }
@@ -87,12 +132,50 @@ function spendPlay() {
     return true;
 }
 
+function rollEvent(notes) {
+    state.drought = false;
+    state.lastEvent = 'NONE';
+    if (Math.random() >= byDifficulty({ easy: 0.15, normal: 0.25, hard: 0.35 })) return 0;
+
+    const kind = pick(Object.keys(EVENTS));
+    state.lastEvent = EVENTS[kind].name;
+    teach('ecosystem', EVENTS[kind].fact);
+    showToast(`EVENT: ${EVENTS[kind].name}!`);
+
+    if (kind === 'drought') {
+        state.drought = true;
+        notes.push('Drought! Plants make 40% less energy this season.');
+        return 0;
+    }
+    if (kind === 'wildfire') {
+        const burned = [];
+        for (let k = 0; k < 2; k++) {
+            const b = removeRandom('producer', (n) => !SPECIES[n].fireproof);
+            if (b) burned.push(b);
+        }
+        notes.push(burned.length ? `Wildfire burned ${burned.join(' and ')}. Oaks survive fire.` : 'Wildfire swept through, but nothing here burns.');
+        return -5;
+    }
+    // Disease hits whatever species is most common.
+    const counts = {};
+    TIERS.forEach((t) => natives(t).forEach((n) => { counts[n] = (counts[n] || 0) + 1; }));
+    const [worst, n] = Object.entries(counts).sort((a, b) => b[1] - a[1])[0] || [];
+    if (worst && n >= 3) {
+        const tier = SPECIES[worst].tier;
+        for (let k = 0; k < 2; k++) removeRandom(tier, (x) => x === worst);
+        notes.push(`Disease tore through the ${worst} population (${n} of them). Monocultures spread disease.`);
+        return -8;
+    }
+    notes.push('A disease arrived, but no species was common enough for it to spread.');
+    return 0;
+}
+
 // Runs the food web for one season and returns the stability change.
 function simulateSeason() {
-    let delta = 0;
     const notes = [];
+    let delta = rollEvent(notes);
 
-    // Kudzu eats producers, then maybe spreads.
+    // Kudzu smothers natives, then maybe spreads.
     for (let k = 0; k < kudzuCount(); k++) {
         const eaten = removeRandom('producer', (n) => !isKudzu(n));
         if (eaten) notes.push(`Kudzu smothered ${eaten}.`);
@@ -101,49 +184,69 @@ function simulateSeason() {
         state.board.producer.push('KUDZU');
         notes.push('Kudzu spread!');
     }
-    delta -= kudzuCount() * 4;
+    delta -= kudzuCount() * 5;
 
-    const P = natives('producer').length;
+    // Predators with nothing on their menu leave or starve.
+    for (const name of [...state.board.predator]) {
+        if (!SPECIES[name].diet.some((prey) => state.board.herbivore.includes(prey))) {
+            state.board.predator.splice(state.board.predator.indexOf(name), 1);
+            notes.push(`${name} found none of its prey (${SPECIES[name].diet.join(', ')}) and starved.`);
+            teach('ecosystem', ECO_FACTS.noPrey);
+            delta -= 4;
+        }
+    }
+
+    const e = energyReport();
     const H = state.board.herbivore.length;
     const R = state.board.predator.length;
 
     // Herbivores vs plants.
     if (H === 0) {
-        if (P > 0) { delta -= 5; notes.push('No grazers: plants overgrow.'); }
+        if (natives('producer').length) { delta -= 5; notes.push('Nothing grazes: plants overgrow and choke each other.'); }
     } else {
-        const ratio = P / H;
-        if (ratio < 1.5) {
-            delta -= 8;
-            const starved = removeRandom('herbivore');
-            notes.push(`Not enough plants. ${starved} starved.`);
-        } else if (ratio <= 3.5) {
-            delta += 8;
+        const ratio = e.herbFood / e.herbNeed;
+        if (ratio < 1) {
+            delta -= 10;
+            notes.push(`Herbivores got ${Math.round(e.herbFood)} of ${e.herbNeed} food. ${removeRandom('herbivore')} starved.`);
+            teach('ecosystem', ECO_FACTS.starve);
         } else {
-            delta -= 3;
+            delta += ratio <= 4 ? 3 : -2;
+            if (ratio > 4) notes.push('Plenty of plants go uneaten. Room for more grazers.');
+            // Well-fed fast breeders multiply.
+            if (ratio >= 1.5) {
+                for (const name of new Set(state.board.herbivore)) {
+                    if (SPECIES[name].breed && state.board.herbivore.length < CFG.herbivoreCap && Math.random() < SPECIES[name].breed) {
+                        state.board.herbivore.push(name);
+                        notes.push(`Well fed, the ${name} population grew.`);
+                    }
+                }
+            }
         }
     }
 
     // Predators vs herbivores.
     if (R === 0) {
         if (H >= 3) {
-            delta -= 8;
+            delta -= 10;
             const grazed = removeRandom('producer', (n) => !isKudzu(n));
-            notes.push(`No predators: herbivores overgraze${grazed ? ` ${grazed}` : ''}.`);
+            notes.push(`No predators: herbivores overgrazed${grazed ? ` the ${grazed}` : ''}.`);
+            teach('ecosystem', ECO_FACTS.overgraze);
         }
     } else {
-        const ratio = H / R;
-        if (ratio < 1.5) {
-            delta -= 8;
-            const starved = removeRandom('predator');
-            notes.push(`Prey is scarce. ${starved} starved.`);
-        } else if (ratio <= 3.5) {
-            delta += 8;
+        const ratio = e.predFood / e.predNeed;
+        if (ratio < 1) {
+            delta -= 10;
+            notes.push(`Predators got ${e.predFood.toFixed(1)} of ${e.predNeed} food. ${removeRandom('predator')} starved.`);
+            teach('ecosystem', ECO_FACTS.starve);
         } else {
-            delta -= 3;
+            delta += ratio <= 4 ? 3 : -2;
         }
     }
 
-    if (state.board.predator.includes('WOLF')) delta += 4;
+    if (diversity() >= CFG.diverseThreshold) {
+        delta += 2;
+        teach('ecosystem', ECO_FACTS.diversity);
+    }
 
     // Healthy plants reseed themselves.
     const plants = natives('producer');
@@ -159,15 +262,19 @@ function simulateSeason() {
 function finish() {
     state.over = true;
     const won = state.stability > 0;
+    const score = won ? Math.round(state.stability + diversity()) : 0;
     playSound(won ? 'win' : 'lose');
-    if (won) {
-        const score = Math.round(state.stability + diversity());
-        showToast(`HABITAT SURVIVED! SCORE ${score}`);
-        logTo('eco-log', `All ${CFG.seasons} seasons survived. Final score: ${score} (stability + biodiversity).`);
-    } else {
-        showToast('ECOSYSTEM COLLAPSED!');
-        logTo('eco-log', 'Stability hit 0. The food web collapsed.');
-    }
+    logTo('eco-log', won ? `All ${CFG.seasons} seasons survived. Score ${score}.` : 'Stability hit 0. The food web collapsed.');
+    onGameOver({
+        won,
+        title: won ? 'HABITAT SURVIVED!' : 'ECOSYSTEM COLLAPSED',
+        score,
+        stats: [
+            ['SEASONS', `${state.season} / ${CFG.seasons}`],
+            ['STABILITY', `${state.stability}%`],
+            ['BIODIVERSITY', `${diversity()}%`],
+        ],
+    });
 }
 
 const actions = {
@@ -178,6 +285,7 @@ const actions = {
         if (!spendPlay()) return;
         state.hand.splice(i, 1);
         playSound('card');
+        teach('ecosystem', SPECIES[name].fact);
         if (isKudzu(name)) {
             logTo('eco-log', 'You burned an invasive Kudzu seed.');
             showToast('KUDZU SEED BURNED');
@@ -207,16 +315,17 @@ const actions = {
         state.hand = state.hand.filter((n) => !isKudzu(n));
         for (let s = 0; s < seeds; s++) state.board.producer.push('KUDZU');
         if (seeds) logTo('eco-log', `${seeds} Kudzu seed(s) blew into the habitat!`);
-        if (Math.random() < CFG.wildInvasionChance) {
+        if (Math.random() < byDifficulty({ easy: 0.06, normal: 0.12, hard: 0.2 })) {
             state.board.producer.push('KUDZU');
             logTo('eco-log', 'Wild Kudzu invaded from a neighbouring field!');
-            showToast('INVASIVE KUDZU OUTBREAK!');
+            teach('ecosystem', SPECIES.KUDZU.fact);
         }
 
         const { delta, notes } = simulateSeason();
         state.stability = Math.max(0, Math.min(100, state.stability + delta));
         notes.forEach((n) => logTo('eco-log', n));
         logTo('eco-log', `Season ${state.season} ends. Stability ${delta >= 0 ? '+' : ''}${delta}.`);
+        state.drought = false;
 
         if (state.stability <= 0 || state.season >= CFG.seasons) {
             render();

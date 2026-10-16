@@ -42,11 +42,12 @@ export const RULES = {
     ecosystem: {
         title: 'ECOSYSTEM BUILDER RULES',
         lines: [
-            'You get 2 plays per season. A play is deploying a species from your hand or removing a tile from the board.',
-            'Herbivores need about 2 producers each to eat. Predators need about 2 herbivores each.',
-            'Starving or overcrowded tiers drop STABILITY. A balanced web raises it.',
-            'Kudzu is invasive: it spreads each season and chokes out a producer. Pull it out by clicking it.',
-            'Survive 10 seasons with stability above 0 to win. Score is based on final stability and biodiversity.',
+            'You get 2 plays per season: deploy a species from your hand, or click a tile to remove it.',
+            'Plants make energy. Herbivores share 10% of it, predators share 10% of what herbivores ate. Each tier header shows food vs need: red means someone starves.',
+            'Species differ: clover fertilises other plants, oaks survive fire, small herbivores breed when well fed, and each predator only eats certain prey (hover a tile to see).',
+            'WOLF is the keystone: while one lives, plants make 15% more energy. Diversity of 60%+ adds stability each season and makes disease less likely to bite.',
+            'Kudzu is inedible and smothers a plant each season. Burn seeds in your hand or they blow in. Random droughts, fires and diseases happen too.',
+            'Survive 10 seasons with stability above 0. Score = stability + biodiversity.',
         ],
     },
     immune: {

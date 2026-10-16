@@ -167,24 +167,37 @@
                             <div class="flex justify-between text-slate-400"><span>PLAYS LEFT:</span><span id="eco-plays" class="text-cyan-400"></span></div>
                             <div class="flex justify-between text-slate-400"><span>KEYSTONE:</span><span id="eco-keystone" class="text-emerald-400"></span></div>
                             <div class="flex justify-between text-slate-400"><span>INVASIVE:</span><span id="eco-invasive" class="text-slate-500"></span></div>
+                            <div class="flex justify-between text-slate-400"><span>LAST EVENT:</span><span id="eco-event" class="text-slate-500"></span></div>
                         </div>
                     </div>
                     <button data-action="ecosystem:season" class="arcade-btn bg-amber-500 hover:bg-amber-400 text-black w-full text-xs">NEXT SEASON &gt;</button>
                 </div>
 
                 <div class="panel lg:col-span-3 space-y-4">
-                    <div class="font-pixel text-xs text-amber-400">FOOD WEB TILES <span class="text-slate-500">(click a tile to remove it, costs 1 play)</span></div>
+                    <div class="flex flex-wrap justify-between gap-2">
+                        <div class="font-pixel text-xs text-amber-400">FOOD WEB <span class="text-slate-500">(click a tile to remove it, costs 1 play)</span></div>
+                        <div class="font-pixel text-[10px] text-yellow-300">ENERGY FLOWS UP. ONLY ~10% PASSES EACH LEVEL.</div>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 min-h-[300px] bg-slate-900 p-4 border-2 border-slate-800">
                         <div class="bg-slate-950 p-3 border-2 border-emerald-900 flex flex-col space-y-2">
-                            <span class="font-pixel text-[10px] text-emerald-400 border-b border-emerald-900 pb-1">PRODUCERS</span>
+                            <div class="border-b border-emerald-900 pb-1">
+                                <span class="font-pixel text-[10px] text-emerald-400">PRODUCERS</span>
+                                <div id="eco-energy-producer" class="font-arcade text-base text-slate-400"></div>
+                            </div>
                             <div id="eco-tier-producer" class="space-y-2"></div>
                         </div>
                         <div class="bg-slate-950 p-3 border-2 border-amber-900 flex flex-col space-y-2">
-                            <span class="font-pixel text-[10px] text-amber-400 border-b border-amber-900 pb-1">HERBIVORES</span>
+                            <div class="border-b border-amber-900 pb-1">
+                                <span class="font-pixel text-[10px] text-amber-400">HERBIVORES</span>
+                                <div id="eco-energy-herbivore" class="font-arcade text-base text-slate-400"></div>
+                            </div>
                             <div id="eco-tier-herbivore" class="space-y-2"></div>
                         </div>
                         <div class="bg-slate-950 p-3 border-2 border-rose-900 flex flex-col space-y-2">
-                            <span class="font-pixel text-[10px] text-rose-400 border-b border-rose-900 pb-1">PREDATORS</span>
+                            <div class="border-b border-rose-900 pb-1">
+                                <span class="font-pixel text-[10px] text-rose-400">PREDATORS</span>
+                                <div id="eco-energy-predator" class="font-arcade text-base text-slate-400"></div>
+                            </div>
                             <div id="eco-tier-predator" class="space-y-2"></div>
                         </div>
                     </div>
