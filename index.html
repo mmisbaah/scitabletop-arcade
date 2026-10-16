@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SciTabletop Arcade</title>
+    <meta name="description" content="Four retro 8-bit science strategy games: chemistry, ecology, immunology and quantum chess.">
+    <link rel="stylesheet" href="css/tailwind.css">
+    <script src="vendor/lucide.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-pink-500 selection:text-black">
+
+    <div id="crt-layer" class="crt-overlay"></div>
+
+    <header class="border-b-4 border-indigo-900 bg-slate-950/90 p-3 sticky top-0 z-50 shadow-xl">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+            <button class="flex items-center space-x-3 text-left" data-action="app:go" data-arg="hub">
+                <div class="p-2 bg-pink-600 border-2 border-white shadow-[3px_3px_0px_#000]">
+                    <i data-lucide="gamepad-2" class="w-6 h-6 text-yellow-300"></i>
+                </div>
+                <div>
+                    <h1 class="font-pixel text-lg sm:text-xl tracking-wider text-yellow-400 neon-text-yellow">SCI-TABLETOP 8-BIT</h1>
+                    <p class="font-arcade text-base text-cyan-400 tracking-widest">PRESS START TO LEARN SCIENCE</p>
+                </div>
+            </button>
+
+            <nav class="flex flex-wrap items-center justify-center gap-2">
+                <button data-action="app:go" data-arg="chemistry" class="arcade-btn bg-emerald-600 hover:bg-emerald-500 text-white text-xs">
+                    <i data-lucide="flask-conical" class="w-4 h-4 mr-1"></i> ALCHEMY
+                </button>
+                <button data-action="app:go" data-arg="ecosystem" class="arcade-btn bg-amber-600 hover:bg-amber-500 text-white text-xs">
+                    <i data-lucide="trees" class="w-4 h-4 mr-1"></i> ECOSYSTEM
+                </button>
+                <button data-action="app:go" data-arg="immune" class="arcade-btn bg-rose-600 hover:bg-rose-500 text-white text-xs">
+                    <i data-lucide="bug" class="w-4 h-4 mr-1"></i> IMMUNE
+                </button>
+                <button data-action="app:go" data-arg="quantum" class="arcade-btn bg-cyan-600 hover:bg-cyan-500 text-white text-xs">
+                    <i data-lucide="atom" class="w-4 h-4 mr-1"></i> QUANTUM
+                </button>
+                <div class="flex gap-1 ml-2">
+                    <button data-action="app:audio" id="audio-toggle" class="arcade-btn bg-purple-700 hover:bg-purple-600 text-yellow-300 text-xs px-2.5" title="Toggle sound">
+                        <i data-lucide="volume-2" class="w-4 h-4"></i>
+                    </button>
+                    <button data-action="app:crt" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs px-2.5" title="Toggle CRT filter">CRT</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6 relative z-10">
+
+        <!-- HUB -->
+        <section id="screen-hub" class="screen space-y-8 py-4">
+            <div class="text-center max-w-3xl mx-auto space-y-3 bg-slate-900/90 p-6 border-4 border-indigo-600 shadow-[8px_8px_0px_#000]">
+                <div class="inline-block px-3 py-1 bg-pink-600 text-white font-pixel text-xs border-2 border-black animate-pulse">SELECT YOUR CARTRIDGE</div>
+                <h2 class="font-pixel text-2xl sm:text-3xl text-cyan-300 neon-text-cyan leading-relaxed">RETRO SCIENCE STRATEGY</h2>
+                <p class="font-arcade text-xl text-slate-300 leading-snug">
+                    INSERT COIN! Balance chemical formulas, keep a food web alive, hold off a pathogen invasion and outplay a friend at quantum chess.
+                </p>
+            </div>
+            <div id="hub-cards" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        </section>
+
+        <!-- GAME 1: ALCHEMY -->
+        <section id="screen-chemistry" class="screen hidden space-y-6">
+            <div class="game-header border-emerald-600">
+                <div>
+                    <h2 class="font-pixel text-lg text-emerald-400 neon-text-green">ELEMENTAL ALCHEMY</h2>
+                    <p class="font-arcade text-lg text-slate-300">Build molecules from atom cards. First to 150 wins.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button data-action="app:rules" data-arg="chemistry" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">RULES</button>
+                    <button data-action="chemistry:reset" class="arcade-btn bg-emerald-600 hover:bg-emerald-500 text-white text-xs">RESET</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="panel lg:col-span-1 h-[520px] flex flex-col">
+                    <div class="flex items-center justify-between mb-3 border-b-2 border-slate-800 pb-2">
+                        <h3 class="font-pixel text-xs text-emerald-400 flex items-center gap-1"><i data-lucide="book" class="w-4 h-4"></i> RECIPES</h3>
+                        <span class="font-pixel text-[10px] text-yellow-400">GOAL: 150</span>
+                    </div>
+                    <div id="chem-recipes" class="space-y-2 overflow-y-auto flex-grow pr-1"></div>
+                </div>
+
+                <div class="panel lg:col-span-2 flex flex-col justify-between space-y-4">
+                    <div class="grid grid-cols-3 gap-4 bg-black p-3 border-2 border-emerald-900 text-center">
+                        <div>
+                            <div class="font-pixel text-[10px] text-slate-400">P1 SCORE</div>
+                            <div id="chem-p1" class="font-pixel text-xl text-emerald-400 neon-text-green">0</div>
+                        </div>
+                        <div>
+                            <div class="font-pixel text-[10px] text-slate-400">TURN</div>
+                            <div id="chem-turn" class="font-pixel text-xl text-yellow-400">1</div>
+                        </div>
+                        <div>
+                            <div class="font-pixel text-[10px] text-slate-400">CPU SCORE</div>
+                            <div id="chem-cpu" class="font-pixel text-xl text-rose-400">0</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 border-4 border-dashed border-emerald-800 p-6 text-center space-y-4 min-h-[200px] flex flex-col justify-center items-center">
+                        <div class="font-pixel text-xs text-emerald-400 tracking-wider">LAB BENCH</div>
+                        <div id="chem-bench" class="flex flex-wrap justify-center gap-3 min-h-[64px] items-center"></div>
+                        <div class="flex gap-2">
+                            <button data-action="chemistry:synthesize" class="arcade-btn bg-emerald-500 hover:bg-emerald-400 text-black text-xs">SYNTHESIZE!</button>
+                            <button data-action="chemistry:clear" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">CLEAR</button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span class="font-pixel text-xs text-yellow-400">YOUR HAND <span id="chem-hand-count" class="text-slate-500"></span></span>
+                            <div class="flex gap-2">
+                                <button data-action="chemistry:draw" class="arcade-btn bg-indigo-600 hover:bg-indigo-500 text-white text-[10px]">+ DRAW 2</button>
+                                <button data-action="chemistry:trade" id="chem-trade-btn" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]" title="Press TRADE, then click a card to swap it">TRADE</button>
+                            </div>
+                        </div>
+                        <div id="chem-hand" class="flex flex-wrap gap-2 min-h-[90px] p-3 bg-slate-900 border-2 border-slate-800 items-center"></div>
+                    </div>
+
+                    <div id="chem-log" class="log-box h-24"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GAME 2: ECOSYSTEM -->
+        <section id="screen-ecosystem" class="screen hidden space-y-6">
+            <div class="game-header border-amber-600">
+                <div>
+                    <h2 class="font-pixel text-lg text-amber-400 neon-text-yellow">ECOSYSTEM BUILDER</h2>
+                    <p class="font-arcade text-lg text-slate-300">Keep a 3-tier food web stable for 10 seasons.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button data-action="app:rules" data-arg="ecosystem" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">RULES</button>
+                    <button data-action="ecosystem:reset" class="arcade-btn bg-amber-600 hover:bg-amber-500 text-white text-xs">RESET</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="panel lg:col-span-1 space-y-4">
+                    <h3 class="font-pixel text-xs text-amber-400 border-b-2 border-slate-800 pb-2">DIAGNOSTICS</h3>
+                    <div class="space-y-3 font-arcade text-lg">
+                        <div>
+                            <div class="flex justify-between"><span class="text-slate-400">BIODIVERSITY:</span><span id="eco-div-val" class="font-pixel text-xs text-emerald-400"></span></div>
+                            <div class="meter"><div id="eco-div-bar" class="bg-emerald-500 h-full"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between"><span class="text-slate-400">STABILITY:</span><span id="eco-stab-val" class="font-pixel text-xs text-amber-400"></span></div>
+                            <div class="meter"><div id="eco-stab-bar" class="bg-amber-500 h-full"></div></div>
+                        </div>
+                        <div class="bg-black p-3 border-2 border-slate-800 space-y-2 font-pixel text-[10px]">
+                            <div class="flex justify-between text-slate-400"><span>SEASON:</span><span id="eco-season" class="text-yellow-400"></span></div>
+                            <div class="flex justify-between text-slate-400"><span>PLAYS LEFT:</span><span id="eco-plays" class="text-cyan-400"></span></div>
+                            <div class="flex justify-between text-slate-400"><span>KEYSTONE:</span><span id="eco-keystone" class="text-emerald-400"></span></div>
+                            <div class="flex justify-between text-slate-400"><span>INVASIVE:</span><span id="eco-invasive" class="text-slate-500"></span></div>
+                        </div>
+                    </div>
+                    <button data-action="ecosystem:season" class="arcade-btn bg-amber-500 hover:bg-amber-400 text-black w-full text-xs">NEXT SEASON &gt;</button>
+                </div>
+
+                <div class="panel lg:col-span-3 space-y-4">
+                    <div class="font-pixel text-xs text-amber-400">FOOD WEB TILES <span class="text-slate-500">(click a tile to remove it, costs 1 play)</span></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 min-h-[300px] bg-slate-900 p-4 border-2 border-slate-800">
+                        <div class="bg-slate-950 p-3 border-2 border-emerald-900 flex flex-col space-y-2">
+                            <span class="font-pixel text-[10px] text-emerald-400 border-b border-emerald-900 pb-1">PRODUCERS</span>
+                            <div id="eco-tier-producer" class="space-y-2"></div>
+                        </div>
+                        <div class="bg-slate-950 p-3 border-2 border-amber-900 flex flex-col space-y-2">
+                            <span class="font-pixel text-[10px] text-amber-400 border-b border-amber-900 pb-1">HERBIVORES</span>
+                            <div id="eco-tier-herbivore" class="space-y-2"></div>
+                        </div>
+                        <div class="bg-slate-950 p-3 border-2 border-rose-900 flex flex-col space-y-2">
+                            <span class="font-pixel text-[10px] text-rose-400 border-b border-rose-900 pb-1">PREDATORS</span>
+                            <div id="eco-tier-predator" class="space-y-2"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="font-pixel text-xs text-yellow-400 mb-2">RESERVE SPECIES HAND</div>
+                        <div id="eco-hand" class="flex flex-wrap gap-2 min-h-[80px] p-3 bg-slate-900 border-2 border-slate-800 items-center"></div>
+                    </div>
+                    <div id="eco-log" class="log-box h-24"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GAME 3: IMMUNE DEFENSE -->
+        <section id="screen-immune" class="screen hidden space-y-6">
+            <div class="game-header border-rose-600">
+                <div>
+                    <h2 class="font-pixel text-lg text-rose-400 neon-text-pink">IMMUNE DEFENSE</h2>
+                    <p class="font-arcade text-lg text-slate-300">Hold off 5 pathogen waves before they breach the organ.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button data-action="app:rules" data-arg="immune" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">RULES</button>
+                    <button data-action="immune:reset" class="arcade-btn bg-rose-600 hover:bg-rose-500 text-white text-xs">RESET</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="panel lg:col-span-1 space-y-4">
+                    <div class="flex justify-between items-center border-b-2 border-slate-800 pb-2">
+                        <span class="font-pixel text-xs text-rose-400">ACTION POINTS</span>
+                        <span id="immune-ap" class="font-pixel text-sm text-yellow-400 bg-black px-2 py-1 border border-yellow-500"></span>
+                    </div>
+                    <div class="bg-black p-3 border-2 border-slate-800 space-y-2">
+                        <div class="flex justify-between font-pixel text-[10px]">
+                            <span class="text-slate-400">ORGAN HEALTH:</span>
+                            <span id="immune-health-val" class="text-emerald-400"></span>
+                        </div>
+                        <div class="meter"><div id="immune-health-bar" class="bg-emerald-500 h-full"></div></div>
+                    </div>
+                    <div id="immune-abilities" class="space-y-2"></div>
+                    <button data-action="immune:end" class="arcade-btn bg-rose-500 hover:bg-rose-400 text-black w-full text-xs">END TURN &gt;&gt;</button>
+                    <div id="immune-log" class="log-box h-28"></div>
+                </div>
+
+                <div class="panel lg:col-span-2 space-y-4">
+                    <div class="flex justify-between items-center font-pixel text-xs">
+                        <span class="text-rose-400">PATHOGEN TRACKS <span class="text-slate-500">(pick an ability, then click a target)</span></span>
+                        <span id="immune-wave" class="text-yellow-400"></span>
+                    </div>
+                    <div class="space-y-3 bg-slate-900 p-4 border-2 border-slate-800">
+                        <div class="space-y-1">
+                            <span class="font-pixel text-[10px] text-slate-400">ZONE 1: BLOODSTREAM</span>
+                            <div id="immune-zone-0" data-zone="0" class="zone-track"></div>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="font-pixel text-[10px] text-slate-400">ZONE 2: TISSUE</span>
+                            <div id="immune-zone-1" data-zone="1" class="zone-track"></div>
+                        </div>
+                        <div class="space-y-1">
+                            <span class="font-pixel text-[10px] text-rose-400">ZONE 3: ORGAN CORE (BREACH NEXT TURN)</span>
+                            <div id="immune-zone-2" data-zone="2" class="zone-track border-2 border-rose-900"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GAME 4: QUANTUM CHESS -->
+        <section id="screen-quantum" class="screen hidden space-y-6">
+            <div class="game-header border-cyan-600">
+                <div>
+                    <h2 class="font-pixel text-lg text-cyan-400 neon-text-cyan">QUANTUM LEAP CHESS</h2>
+                    <p class="font-arcade text-lg text-slate-300">Two-player hotseat. Capture the rival Atom to win.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button data-action="app:rules" data-arg="quantum" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">RULES</button>
+                    <button data-action="quantum:reset" class="arcade-btn bg-cyan-600 hover:bg-cyan-500 text-white text-xs">RESET</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="panel lg:col-span-3 flex flex-col items-center justify-center">
+                    <div id="quantum-msg" class="font-pixel text-xs text-cyan-300 mb-3 text-center neon-text-cyan min-h-[2.5em]"></div>
+                    <div id="quantum-grid" class="quantum-grid w-full bg-black"></div>
+                </div>
+
+                <div class="panel lg:col-span-1 space-y-4 flex flex-col justify-between">
+                    <div class="space-y-2">
+                        <h3 class="font-pixel text-xs text-cyan-400 border-b-2 border-slate-800 pb-2">PARTICLES</h3>
+                        <div class="space-y-2 font-arcade text-lg">
+                            <div class="p-2 bg-slate-900 border border-slate-800">
+                                <span class="font-pixel text-xs text-cyan-300">ELECTRON (E)</span>
+                                <p class="text-slate-400 text-base leading-none mt-1">Jumps up to 2 squares. Can split into two places at once until a rival piece gets next to it.</p>
+                            </div>
+                            <div class="p-2 bg-slate-900 border border-slate-800">
+                                <span class="font-pixel text-xs text-amber-300">PHOTON (P)</span>
+                                <p class="text-slate-400 text-base leading-none mt-1">Slides in straight lines, like a rook.</p>
+                            </div>
+                            <div class="p-2 bg-slate-900 border border-slate-800">
+                                <span class="font-pixel text-xs text-emerald-300">ATOM (A)</span>
+                                <p class="text-slate-400 text-base leading-none mt-1">Your king. Moves 1 square. Lose it, lose the game.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="quantum-log" class="log-box h-40"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Rules modal -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border-4 border-indigo-600 p-6 max-w-xl w-full space-y-4 shadow-[10px_10px_0px_#000]">
+            <div class="flex items-center justify-between border-b-2 border-slate-800 pb-2">
+                <h3 id="modal-title" class="font-pixel text-base text-yellow-400">RULES</h3>
+                <button data-action="app:close-rules" class="text-slate-400 hover:text-white font-pixel">X</button>
+            </div>
+            <ul id="modal-content" class="font-arcade text-xl text-slate-300 space-y-2 leading-snug list-none"></ul>
+            <div class="pt-2 text-right">
+                <button data-action="app:close-rules" class="arcade-btn bg-indigo-600 hover:bg-indigo-500 text-white text-xs">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"><span id="toast-msg">SYSTEM READY</span></div>
+
+    <footer class="border-t-4 border-indigo-950 bg-slate-950 py-3 text-center font-pixel text-[10px] text-slate-500">
+        SCI-TABLETOP ARCADE 8-BIT EDITION
+    </footer>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

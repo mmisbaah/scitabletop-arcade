@@ -1,0 +1,17 @@
+{
+  "name": "scitabletop-arcade",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SciTabletop 8-Bit Arcade: four retro science strategy games.",
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --watch",
+    "vendor": "mkdir -p vendor && cp node_modules/lucide/dist/umd/lucide.min.js vendor/lucide.min.js",
+    "build": "npm run build:css && npm run vendor",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "lucide": "0.460.0",
+    "tailwindcss": "3.4.17"
+  }
+}
