@@ -9,6 +9,14 @@ Four science strategy games in one app. Plain HTML, CSS and JavaScript modules. 
 | **Immune Defense** | Immunology: innate vs adaptive immunity and immune memory. Stop viruses and bacteria before they multiply | Solo wave defense |
 | **Quantum Leap Chess** | Physics: superposition, measurement, photon absorption and emission | vs CPU or 2-player hotseat |
 
+Three age groups, picked on first launch and changeable from the top bar:
+
+| Group | What changes |
+|---|---|
+| **Explorers (5–7)** | Simpler versions: Molecule Match (copy the picture), Feed the Forest (no invasive plants or disasters, 6 seasons), Germ Busters (tap a germ and the right cell goes after it, 3 waves), Quantum Hop (gentle CPU and a Hint button). Bigger tap targets, short kid-friendly facts, read-aloud. Stars for how well you did. |
+| **Investigators (8–11)** | The real games, a bit gentler: 7 molecules to 100 points, 8 seasons, slower germ growth. |
+| **Scientists (12+)** | Full rules and the full difficulty range. |
+
 What every game has:
 - **Lab Notes**: a science fact for whatever just happened
 - **End screen**: your score, personal best, stats, and every fact you met that round
@@ -32,6 +40,10 @@ js/
     icons.js                the 22 Lucide icons used (generated)
     storage.js              localStorage settings and best scores
     progress.js             XP, levels, stars, achievements, fact journal
+    age.js                  age groups and kid-friendly wording
+    art.js                  molecule models, cartoon germs, the mascot (inline SVG)
+    confetti.js             win celebration
+    speech.js               read-aloud
     difficulty.js           Easy/Normal/Hard lookup
     facts.js                Lab Notes and the "what you learned" list
     endscreen.js            results screen

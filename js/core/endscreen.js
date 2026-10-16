@@ -3,7 +3,12 @@
 
 import { $, refreshIcons, icon } from './ui.js';
 import { learnedFacts } from './facts.js';
-import { settings, getBest, recordScore } from './storage.js';
+import { getBest, recordScore } from './storage.js';
+import { currentDifficulty } from './difficulty.js';
+import { AGES, isYoung } from './age.js';
+import { confetti } from './confetti.js';
+import { mascotSVG } from './art.js';
+import { speak, canSpeak } from './speech.js';
 import { recordResult, levelOf, levelProgress, totalXp } from './progress.js';
 import { CARTRIDGES } from '../data/rules.js';
 
@@ -28,8 +33,11 @@ export function showEnd(game, result) {
     card.style.setProperty('--game-soft', 'color-mix(in srgb, var(--game) 13%, var(--surface))');
     card.style.setProperty('--game-line', 'color-mix(in srgb, var(--game) 35%, var(--line))');
 
+    const cheer = won || (isYoung() && progress.stars >= 2);
+    $('end-mascot').innerHTML = mascotSVG(84, cheer ? 'wow' : isYoung() ? 'happy' : 'sad');
+    if (cheer) confetti();
     const badge = $('end-badge');
-    badge.textContent = isRecord ? 'New high score' : won ? 'Victory' : 'Game over';
+    badge.textContent = isRecord ? 'New high score' : won ? 'Victory' : isYoung() ? 'Good try!' : 'Game over';
     badge.className = `chip ${won ? 'good' : 'bad'}`;
     $('end-title').textContent = title;
     $('end-stars').innerHTML = [1, 2, 3].map((n) => icon('star', `icon${n <= progress.stars ? ' on' : ''}`)).join('');
@@ -39,9 +47,9 @@ export function showEnd(game, result) {
     $('end-best').textContent = best ?? '–';
     $('end-xp').textContent = `+${progress.xpGained}`;
 
-    const level = levelOf();
-    $('end-level').textContent = progress.levelAfter > progress.levelBefore ? `Level up! You reached level ${level}` : `Level ${level}`;
-    $('end-level-next').textContent = `${XP_PER_LEVEL - (totalXp() % XP_PER_LEVEL)} XP to level ${level + 1}`;
+    const lvl = levelOf();
+    $('end-level').textContent = progress.levelAfter > progress.levelBefore ? `Level up! You reached level ${lvl}` : `Level ${lvl}`;
+    $('end-level-next').textContent = `${XP_PER_LEVEL - (totalXp() % XP_PER_LEVEL)} XP to level ${lvl + 1}`;
     $('end-level-bar').style.width = `${Math.round(levelProgress() * 100)}%`;
 
     setList($('end-unlocks'), progress.newAchievements, (a) => {
@@ -54,7 +62,8 @@ export function showEnd(game, result) {
     });
 
     $('end-stats').innerHTML = '';
-    for (const [k, v] of [...stats, ['Difficulty', settings.difficulty[0].toUpperCase() + settings.difficulty.slice(1)]]) {
+    const level = isYoung() ? AGES.young.label : currentDifficulty()[0].toUpperCase() + currentDifficulty().slice(1);
+    for (const [k, v] of [...stats, [isYoung() ? 'Age group' : 'Difficulty', level]]) {
         const dt = document.createElement('dt');
         dt.textContent = k[0] + k.slice(1).toLowerCase();
         const dd = document.createElement('dd');
@@ -69,7 +78,10 @@ export function showEnd(game, result) {
         return li;
     });
 
+    $('end-read').hidden = !(isYoung() && canSpeak());
+    $('end-read').onclick = () => speak(`${title}. You got ${progress.stars} stars!`);
     $('end-modal').hidden = false;
+    if (isYoung()) speak(`${title}. You got ${progress.stars} star${progress.stars > 1 ? 's' : ''}!`);
     refreshIcons($('end-modal'));
     $('end-replay').focus({ preventScroll: true });
     card.scrollTop = 0;

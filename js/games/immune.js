@@ -2,11 +2,16 @@
 // Beating a pathogen with adaptive cells (T-cells, B-cells) builds memory that
 // makes the next encounter easier, the same way vaccines work.
 
-import { $, showToast, logTo, clearLog, setMeter, shake } from '../core/ui.js';
+import { $, showToast, logTo, clearLog, setMeter, shake, floatPoints } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
-import { PATHOGENS, WAVES, ABILITIES, BREACH_FACT, MEMORY_FACTS, IMMUNE_CONFIG as CFG } from '../data/pathogens.js';
+import { isYoung, byAge, say } from '../core/age.js';
+import { germSVG } from '../core/art.js';
+import { PATHOGENS, WAVES as ALL_WAVES, ABILITIES, BREACH_FACT, MEMORY_FACTS, IMMUNE_KID, AGE_TUNING, IMMUNE_CONFIG as CFG } from '../data/pathogens.js';
+
+let T = {};
+let WAVES = ALL_WAVES;
 
 let state;
 let nextId = 1;
@@ -14,7 +19,7 @@ let onGameOver = () => {};
 export function setGameOverHandler(fn) { onGameOver = fn; }
 
 const ADAPTIVE = new Set(['tcell', 'bcell']);
-const apPerTurn = () => byDifficulty(CFG.apPerTurn);
+const apPerTurn = () => T.ap ?? byDifficulty(CFG.apPerTurn);
 
 function spawn(name) {
     const base = PATHOGENS[name];
@@ -23,6 +28,9 @@ function spawn(name) {
 }
 
 export function init() {
+    T = byAge(AGE_TUNING);
+    WAVES = ALL_WAVES.slice(0, T.waves ?? ALL_WAVES.length);
+    document.getElementById('screen-immune').classList.toggle('kid-mode', isYoung());
     state = {
         ap: apPerTurn(),
         health: 100,
@@ -35,7 +43,7 @@ export function init() {
     };
     state.zones[0] = WAVES[0].map(spawn);
     clearLog('immune-log', 'Wave 1 has entered the bloodstream.');
-    resetFacts('immune', 'Viruses (purple) and bacteria (red) are very different enemies. Your body uses different cells for each.');
+    resetFacts('immune', say('Viruses (purple, spiky) and bacteria (green, bean-shaped) are very different enemies. Your body uses different cells for each.', IMMUNE_KID.intro));
     render();
 }
 
@@ -64,7 +72,7 @@ function render() {
         <button class="ability ${state.armed === key ? 'is-armed' : ''}" data-action="immune:arm" data-arg="${key}"
             ${state.ap < a.cost ? 'aria-disabled="true"' : ''}>
             <span class="glyph" aria-hidden="true">${GLYPHS[key]}</span>
-            <span><b>${a.label}</b><small>${a.hint}</small></span>
+            <span><b>${isYoung() ? `${a.kidLabel} (${a.label})` : a.label}</b><small>${a.hint}</small></span>
             <span class="cost">${a.cost} AP</span>
         </button>
     `).join('');
@@ -78,6 +86,7 @@ function render() {
             return `
             <button class="pathogen ${p.kind} ${targetable ? 'targetable' : ''}" data-action="immune:target" data-arg="${p.id}"
                 aria-label="${nice(p.name)}, ${p.kind}, ${p.hp} HP${p.remembered ? ', remembered' : ''}">
+                <span class="germ-wrap">${germSVG(p.kind, 40)}</span>
                 <span class="kind">${p.kind}</span>
                 <b>${nice(p.name)}${p.remembered ? ' <span class="chip game" title="Remembered: weaker, and macrophages do +1">✓</span>' : ''}</b>
                 <span class="hp">${'<i></i>'.repeat(p.hp)}</span>
@@ -88,14 +97,14 @@ function render() {
 
 function remember(p, source) {
     if (!ADAPTIVE.has(source)) {
-        if (!state.memory.has(p.name)) teach('immune', MEMORY_FACTS.innate);
+        if (!state.memory.has(p.name)) teach('immune', say(MEMORY_FACTS.innate, 'Gobbler cells fight any germ, but they can\'t remember them. Zappers and Taggers can!'));
         return;
     }
     if (state.memory.has(p.name)) return;
     state.memory.add(p.name);
     logTo('immune-log', `Memory cells now recognise ${p.name}.`);
-    showToast(`Memory cells now recognise ${nice(p.name)}`);
-    teach('immune', state.memory.size === 1 ? MEMORY_FACTS.learned : MEMORY_FACTS.vaccine);
+    showToast(isYoung() ? `Your body will remember ${nice(p.name)}!` : `Memory cells now recognise ${nice(p.name)}`);
+    teach('immune', say(state.memory.size === 1 ? MEMORY_FACTS.learned : MEMORY_FACTS.vaccine, IMMUNE_KID.learned));
 }
 
 function damage(z, p, amount, source) {
@@ -104,7 +113,7 @@ function damage(z, p, amount, source) {
         state.zones[z] = state.zones[z].filter((x) => x.id !== p.id);
         state.kills += 1;
         logTo('immune-log', `${p.name} destroyed.`);
-        teach('immune', PATHOGENS[p.name].fact);
+        teach('immune', say(PATHOGENS[p.name].fact, PATHOGENS[p.name].kid));
         remember(p, source);
         return true;
     }
@@ -120,7 +129,7 @@ function spend(key) {
 
 // Pathogens past the bloodstream multiply: bacteria divide, viruses hijack cells.
 function grow() {
-    const chance = byDifficulty(CFG.growthChance);
+    const chance = T.growth ?? byDifficulty(CFG.growthChance) * (T.growthScale ?? 1);
     for (const z of [1, 2]) {
         for (const p of [...state.zones[z]]) {
             if (state.zones[z].length >= CFG.zoneCap || Math.random() >= chance) continue;
@@ -128,7 +137,7 @@ function grow() {
             copy.hp = Math.min(copy.hp, p.hp);
             state.zones[z].push(copy);
             logTo('immune-log', `${p.name} ${p.kind === 'bacteria' ? 'divided' : 'replicated'} in zone ${z + 1}!`);
-            teach('immune', p.kind === 'bacteria' ? MEMORY_FACTS.fission : MEMORY_FACTS.replicate);
+            teach('immune', say(p.kind === 'bacteria' ? MEMORY_FACTS.fission : MEMORY_FACTS.replicate, IMMUNE_KID.grow));
         }
     }
 }
@@ -139,7 +148,8 @@ function endGame(won) {
     logTo('immune-log', won ? `All ${WAVES.length} waves defeated with ${state.health}% organ health.` : 'The organ has failed.');
     onGameOver({
         won,
-        title: won ? 'Infection cleared' : 'Organ failure',
+        title: won ? (isYoung() ? 'You busted all the germs!' : 'Infection cleared') : (isYoung() ? 'The germs got in this time' : 'Organ failure'),
+        kidStars: state.health >= 70 ? 3 : state.health >= 35 ? 2 : 1,
         score: won ? state.health * 2 + state.memory.size * 10 : 0,
         stats: [
             ['Organ health', `${state.health}%`],
@@ -166,7 +176,7 @@ const actions = {
             return;
         }
         state.armed = state.armed === key ? null : key;
-        if (state.armed) teach('immune', a.fact);
+        if (state.armed) teach('immune', say(a.fact, a.kid));
         playSound('card');
         render();
     },
@@ -176,6 +186,17 @@ const actions = {
         if (!hit) return;
         // Clicking a pathogen with B-Cell armed targets its zone.
         if (state.armed === 'bcell') return actions.zone(hit.z);
+        if (!state.armed && T.autoTarget) {
+            const pick = hit.p.kind === 'virus' && state.ap >= 2 ? 'tcell' : state.ap >= 1 ? 'macrophage' : null;
+            if (!pick) {
+                playSound('error');
+                showToast('Out of energy! Press End turn.');
+                return;
+            }
+            state.armed = pick;
+            teach('immune', say(ABILITIES[pick].fact, ABILITIES[pick].kid));
+            floatPoints(pick === 'tcell' ? '⚡ Zap!' : '😋 Gulp!', el);
+        }
         if (!state.armed) {
             showToast('Pick an immune cell first');
             return;
@@ -193,7 +214,7 @@ const actions = {
         } else if (state.armed === 'macrophage') {
             spend('macrophage');
             const tagged = p.remembered ? 1 : 0;
-            if (tagged) teach('immune', MEMORY_FACTS.tagged);
+            if (tagged) teach('immune', say(MEMORY_FACTS.tagged, 'Your body remembered this germ, so the Gobbler gets an extra big bite!'));
             damage(z, p, (p.kind === 'bacteria' ? 2 : 1) + tagged, 'macrophage');
         }
         checkVictory();
@@ -213,14 +234,14 @@ const actions = {
         state.armed = null;
 
         // Organ core breaches.
-        const breach = state.zones[2].reduce((t, p) => t + p.hp * byDifficulty(CFG.breachDamagePerHp), 0);
+        const breach = state.zones[2].reduce((t, p) => t + p.hp * (T.breach ?? byDifficulty(CFG.breachDamagePerHp)), 0);
         if (breach) {
             state.health = Math.max(0, state.health - breach);
             playSound('lose');
             shake($('immune-zone-2'));
             logTo('immune-log', `BREACH! Organ takes ${breach} damage.`);
             showToast(`Breach! Organ health −${breach}%`);
-            teach('immune', BREACH_FACT);
+            teach('immune', say(BREACH_FACT, IMMUNE_KID.breach));
         } else {
             playSound('synth');
         }

@@ -6,7 +6,10 @@ import { playSound, setAudio } from './core/audio.js';
 import { settings, saveSettings, getBest } from './core/storage.js';
 import { showEnd, hideEnd, lastGame } from './core/endscreen.js';
 import { ACHIEVEMENTS, isUnlocked, levelOf, levelProgress, totalXp, starsFor, journalSize } from './core/progress.js';
-import { CARTRIDGES, RULES } from './data/rules.js';
+import { CARTRIDGES, RULES, KID_CARTRIDGES, KID_RULES } from './data/rules.js';
+import { AGES, ageGroup, isYoung, setAge } from './core/age.js';
+import { mascotSVG } from './core/art.js';
+import { speak, canSpeak } from './core/speech.js';
 import * as chemistry from './games/chemistry.js';
 import * as ecosystem from './games/ecosystem.js';
 import * as immune from './games/immune.js';
@@ -57,7 +60,7 @@ function go(key, { push = true } = {}) {
     window.scrollTo({ top: 0 });
 
     // First visit to a game opens its rules as a quick tutorial.
-    if (GAMES[target] && !settings.seenRules[target]) {
+    if (GAMES[target] && !settings.seenRules[target] && settings.age) {
         settings.seenRules[target] = true;
         saveSettings();
         showRules(target, true);
@@ -117,16 +120,19 @@ function renderHub() {
             <div><span class="eyebrow">Facts</span><b class="num">${journalSize()}</b></div>
         </div>`;
 
-    $('hub-difficulty-note').textContent = `Playing on ${settings.difficulty}. Win on Hard for 3 stars.`;
+    $('hub-difficulty-note').textContent = isYoung()
+        ? 'Explorer mode: do your best to earn 3 stars!'
+        : `Playing on ${settings.difficulty}. Win on Hard for 3 stars.`;
     $('hub-cards').innerHTML = CARTRIDGES.map((g) => {
         const best = getBest(g.key);
+        const kid = isYoung() ? KID_CARTRIDGES[g.key] : null;
         return `
         <button class="game-card ${g.theme}" data-action="app:go" data-arg="${g.key}">
             <div class="game-art">${cardArt(g.art)}</div>
             <div class="game-info">
                 <div class="eyebrow" style="color:var(--game)">${g.subject} · ${g.mode}</div>
-                <h3>${g.title}</h3>
-                <p>${g.blurb}</p>
+                <h3>${kid?.title ?? g.title}</h3>
+                <p>${kid?.blurb ?? g.blurb}</p>
                 <div class="game-meta">
                     ${starRow(starsFor(g.key))}
                     <span class="chip">${best === null ? 'Not played yet' : `Best ${best}`}</span>
@@ -153,9 +159,11 @@ function showRules(key, firstTime = false) {
     const cart = CARTRIDGES.find((c) => c.key === key);
     $('rules-card').className = `modal-card ${cart?.theme ?? ''}`;
     $('modal-eyebrow').textContent = firstTime ? 'New game · how to play' : 'How to play';
-    $('modal-title').textContent = cart?.title ?? data.title;
+    $('modal-title').textContent = (isYoung() ? KID_CARTRIDGES[key]?.title : null) ?? cart?.title ?? data.title;
     $('modal-content').innerHTML = '';
-    for (const line of data.lines) {
+    const lines = isYoung() ? KID_RULES[key] : data.lines;
+    if (isYoung()) speak(lines.join(' '));
+    for (const line of lines) {
         const li = document.createElement('li');
         li.textContent = line;
         $('modal-content').appendChild(li);
@@ -164,6 +172,66 @@ function showRules(key, firstTime = false) {
 }
 
 const closeRules = () => { $('rules-modal').hidden = true; };
+
+// ---------- age groups ----------
+
+const ORIGINAL_HEADS = {};
+
+function applyAge() {
+    const group = ageGroup();
+    document.body.classList.remove('age-young', 'age-middle', 'age-teen');
+    document.body.classList.add(`age-${group}`);
+    const a = AGES[group];
+    $('age-btn').innerHTML = `${a.emoji} <span class="age-label">${a.label}</span>`;
+    $('difficulty-select').hidden = isYoung();
+
+    // Explorers see friendlier game names on each screen.
+    for (const c of CARTRIDGES) {
+        const head = document.querySelector(`#screen-${c.key} .game-head`);
+        const eyebrow = head.querySelector('.eyebrow');
+        ORIGINAL_HEADS[c.key] ??= { h2: head.querySelector('h2').textContent, p: head.querySelector('p').textContent, eyebrow: eyebrow.innerHTML };
+        const kid = isYoung() ? KID_CARTRIDGES[c.key] : null;
+        eyebrow.innerHTML = kid ? ORIGINAL_HEADS[c.key].eyebrow.split(' · ')[0] : ORIGINAL_HEADS[c.key].eyebrow;
+        head.querySelector('h2').textContent = kid?.title ?? ORIGINAL_HEADS[c.key].h2;
+        head.querySelector('p').textContent = kid?.blurb ?? ORIGINAL_HEADS[c.key].p;
+    }
+    $('hero-title').innerHTML = isYoung() ? 'Play with <em>science!</em>' : 'Learn science by <em>outplaying</em> it.';
+    $('hero-text').textContent = isYoung()
+        ? 'Build molecules, feed a forest, bust germs and hop around a quantum board. Tap the speaker to hear things read out loud.'
+        : 'Balance molecules, keep a food web alive, hold off an infection and outwit a quantum opponent. Every move comes with the real science behind it.';
+    refreshIcons();
+}
+
+function showAgePicker() {
+    $('age-mascot').innerHTML = mascotSVG(84, 'wow');
+    $('age-options').innerHTML = Object.entries(AGES).map(([key, a]) => `
+        <button class="age-card ${settings.age === key ? 'is-current' : ''}" data-action="app:pick-age" data-arg="${key}">
+            <span class="emoji" aria-hidden="true">${a.emoji}</span>
+            <b>${a.name}</b>
+            <span class="chip">${a.label}</span>
+            <small>${a.blurb}</small>
+        </button>`).join('');
+    $('age-modal').hidden = false;
+}
+
+function pickAge(age) {
+    const changed = settings.age !== age;
+    setAge(age);
+    $('age-modal').hidden = true;
+    applyAge();
+    playSound('win');
+    if (changed) {
+        // Every game restarts with the new age group's rules.
+        started.clear();
+        if (GAMES[current]) {
+            GAMES[current].init();
+            started.add(current);
+        }
+    }
+    if (current === 'hub') renderHub();
+    showToast(`${AGES[age].name} mode: ${AGES[age].label}`);
+    if (age === 'young') speak('Hi! Let us play with science!');
+}
 
 // ---------- settings ----------
 
@@ -197,6 +265,11 @@ function applySettings() {
 }
 
 const APP_ACTIONS = {
+    age: showAgePicker,
+    'pick-age': pickAge,
+    read: (game) => {
+        if (!speak($(`${game}-fact`)?.textContent)) showToast('Read-aloud isn\'t available in this browser');
+    },
     go: (arg) => { playSound('card'); go(arg); },
     rules: (arg) => showRules(arg),
     'close-rules': closeRules,
@@ -244,6 +317,7 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+        if (settings.age) $('age-modal').hidden = true;
         closeRules();
         hideEnd();
     }
@@ -252,5 +326,10 @@ document.addEventListener('keydown', (e) => {
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applySettings);
 window.addEventListener('hashchange', () => go(location.hash.slice(1), { push: false }));
 
+document.body.classList.toggle('can-speak', canSpeak());
+document.querySelectorAll('.mascot-slot').forEach((el) => { el.innerHTML = mascotSVG(56); });
+$('hero-mascot').innerHTML = mascotSVG(96, 'happy');
+applyAge();
 applySettings();
 go(location.hash.slice(1), { push: false });
+if (!settings.age) showAgePicker();

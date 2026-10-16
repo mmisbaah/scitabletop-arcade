@@ -23,6 +23,7 @@
                 <span class="level-ring" id="bar-level-ring"></span>
                 <span class="level-label" id="bar-level-label"></span>
             </span>
+            <button class="age-btn" data-action="app:age" id="age-btn" aria-label="Change age group"></button>
             <select id="difficulty-select" class="diff-select" aria-label="Difficulty">
                 <option value="easy">Easy</option>
                 <option value="normal">Normal</option>
@@ -40,9 +41,10 @@
     <section id="screen-hub" class="screen">
         <div class="hero">
             <div>
+                <div class="hero-mascot" id="hero-mascot"></div>
                 <div class="eyebrow">Four games · one lab</div>
-                <h1>Learn science by <em>outplaying</em> it.</h1>
-                <p>Balance molecules, keep a food web alive, hold off an infection and outwit a quantum opponent. Every move comes with the real science behind it.</p>
+                <h1 id="hero-title">Learn science by <em>outplaying</em> it.</h1>
+                <p id="hero-text">Balance molecules, keep a food web alive, hold off an infection and outwit a quantum opponent. Every move comes with the real science behind it.</p>
             </div>
             <div class="profile" id="hub-profile"></div>
         </div>
@@ -69,35 +71,38 @@
         </div>
 
         <div class="hud">
-            <div class="stat is-you"><span class="eyebrow">You</span><span class="stat-value" id="chem-p1">0</span><div class="meter"><div id="chem-p1-bar" style="width:0%"></div></div></div>
-            <div class="stat is-rival"><span class="eyebrow">CPU chemist</span><span class="stat-value" id="chem-cpu">0</span><div class="meter"><div id="chem-cpu-bar" style="width:0%;background:var(--ink-3)"></div></div></div>
-            <div class="stat"><span class="eyebrow">Turn</span><span class="stat-value" id="chem-turn">1</span><span class="muted" id="chem-cpu-hand"></span></div>
+            <div class="stat is-you"><span class="eyebrow" id="chem-you-label">You</span><span class="stat-value" id="chem-p1">0</span><div class="meter"><div id="chem-p1-bar" style="width:0%"></div></div></div>
+            <div class="stat is-rival adv"><span class="eyebrow">CPU chemist</span><span class="stat-value" id="chem-cpu">0</span><div class="meter"><div id="chem-cpu-bar" style="width:0%;background:var(--ink-3)"></div></div></div>
+            <div class="stat adv"><span class="eyebrow">Turn</span><span class="stat-value" id="chem-turn">1</span><span class="muted" id="chem-cpu-hand"></span></div>
         </div>
 
         <div class="note" id="chemistry-note">
-            <span class="note-icon"><i data-icon="lightbulb" class="icon"></i></span>
+            <span class="note-icon mascot-slot"></span>
             <div class="note-body">
                 <div class="note-title"><span class="eyebrow">Lab notes</span><span class="chip game new-badge">New to your journal</span></div>
                 <p class="note-text" id="chemistry-fact"></p>
             </div>
+            <button class="icon-btn read-btn" data-action="app:read" data-arg="chemistry" aria-label="Read this out loud"><i data-icon="volume-2" class="icon"></i></button>
         </div>
 
         <div class="layout rail-left">
-            <aside class="panel">
-                <div class="panel-head"><h3>Recipes</h3><span class="chip game">Goal 150</span></div>
+            <aside class="panel adv">
+                <div class="panel-head"><h3>Recipes</h3><span class="chip game" id="chem-goal">Goal 150</span></div>
                 <div class="recipe-list" id="chem-recipes"></div>
             </aside>
 
             <div class="stack">
+                <div class="kid-target kid-only" id="chem-target"></div>
                 <div class="bench" id="chem-bench">
+                    <div class="built-pop" id="chem-built" hidden></div>
                     <div class="bench-slots" id="chem-bench-slots"></div>
-                    <div class="actions">
+                    <div class="actions adv">
                         <button class="btn btn-primary" data-action="chemistry:synthesize"><i data-icon="sparkles" class="icon"></i>Synthesize</button>
                         <button class="btn" data-action="chemistry:clear">Clear bench</button>
                     </div>
                 </div>
 
-                <div class="panel">
+                <div class="panel adv">
                     <div class="tray-label">
                         <h3 style="font-size:1.05rem">Atom market</h3>
                         <span class="muted">Shared with the CPU. Pick 2 to use your turn.</span>
@@ -107,17 +112,17 @@
 
                 <div class="panel">
                     <div class="tray-label">
-                        <h3 style="font-size:1.05rem">Your atoms <span class="muted num" id="chem-hand-count"></span></h3>
-                        <div class="actions">
+                        <h3 style="font-size:1.05rem"><span class="adv">Your atoms</span><span class="kid-only">Tap an atom</span> <span class="muted num adv" id="chem-hand-count"></span></h3>
+                        <div class="actions adv">
                             <button class="btn btn-sm btn-soft" data-action="chemistry:draw">Draw 2</button>
                             <button class="btn btn-sm" data-action="chemistry:trade" id="chem-trade-btn">Trade one</button>
                         </div>
                     </div>
                     <div class="tray" id="chem-hand"></div>
-                    <p class="muted" style="font-size:.85rem;margin-top:10px">Tap an atom or drag it onto the bench. The dots show how many bonds it makes.</p>
+                    <p class="muted adv" style="font-size:.85rem;margin-top:10px">Tap an atom or drag it onto the bench. The dots show how many bonds it makes.</p>
                 </div>
 
-                <div class="panel">
+                <div class="panel adv">
                     <div class="panel-head"><h3>Match log</h3></div>
                     <div class="log" id="chem-log"></div>
                 </div>
@@ -147,15 +152,17 @@
         </div>
 
         <div class="note" id="ecosystem-note">
-            <span class="note-icon"><i data-icon="lightbulb" class="icon"></i></span>
+            <span class="note-icon mascot-slot"></span>
             <div class="note-body">
                 <div class="note-title"><span class="eyebrow">Field notes</span><span class="chip game new-badge">New to your journal</span></div>
                 <p class="note-text" id="ecosystem-fact"></p>
             </div>
+            <button class="icon-btn read-btn" data-action="app:read" data-arg="ecosystem" aria-label="Read this out loud"><i data-icon="volume-2" class="icon"></i></button>
         </div>
 
         <div class="layout">
             <div class="stack">
+                <div class="scene" id="eco-scene" aria-label="Picture of your habitat"></div>
                 <div class="panel">
                     <div class="panel-head"><h3>Food web</h3><span class="muted" style="font-size:.85rem">Tap a tile to remove it (1 play)</span></div>
                     <div class="web">
@@ -189,7 +196,7 @@
                     </dl>
                     <button class="btn btn-primary btn-block" style="margin-top:16px" data-action="ecosystem:season">Next season<i data-icon="play" class="icon"></i></button>
                 </div>
-                <div class="panel">
+                <div class="panel adv">
                     <div class="panel-head"><h3>Season log</h3></div>
                     <div class="log" id="eco-log"></div>
                 </div>
@@ -218,16 +225,17 @@
         </div>
 
         <div class="note" id="immune-note">
-            <span class="note-icon"><i data-icon="lightbulb" class="icon"></i></span>
+            <span class="note-icon mascot-slot"></span>
             <div class="note-body">
                 <div class="note-title"><span class="eyebrow">Lab notes</span><span class="chip game new-badge">New to your journal</span></div>
                 <p class="note-text" id="immune-fact"></p>
             </div>
+            <button class="icon-btn read-btn" data-action="app:read" data-arg="immune" aria-label="Read this out loud"><i data-icon="volume-2" class="icon"></i></button>
         </div>
 
         <div class="layout">
             <div class="panel">
-                <div class="panel-head"><h3>Infection route</h3><span class="muted" style="font-size:.85rem">Pick a cell, then tap a target</span></div>
+                <div class="panel-head"><h3>Infection route</h3><span class="muted adv" style="font-size:.85rem">Pick a cell, then tap a target</span><span class="chip game kid-only">Tap a germ to zap it!</span></div>
                 <div class="tracks">
                     <div class="track">
                         <div class="track-label"><b>Bloodstream</b><small>Wave enters here</small></div>
@@ -238,7 +246,7 @@
                         <div class="lane" id="immune-zone-1" data-zone="1"></div>
                     </div>
                     <div class="track">
-                        <div class="track-label"><b>Organ core</b><small>Breaches next turn</small></div>
+                        <div class="track-label"><b>❤️ Organ core</b><small>Breaches next turn</small></div>
                         <div class="lane core" id="immune-zone-2" data-zone="2"></div>
                     </div>
                 </div>
@@ -250,11 +258,11 @@
                     <div class="stack" style="gap:10px" id="immune-abilities"></div>
                     <button class="btn btn-primary btn-block" style="margin-top:14px" data-action="immune:end">End turn<i data-icon="play" class="icon"></i></button>
                 </div>
-                <div class="panel">
+                <div class="panel adv">
                     <div class="panel-head"><h3>Immune memory</h3></div>
                     <div id="immune-memory"></div>
                 </div>
-                <div class="panel">
+                <div class="panel adv">
                     <div class="panel-head"><h3>Battle log</h3></div>
                     <div class="log" id="immune-log"></div>
                 </div>
@@ -272,6 +280,7 @@
             </div>
             <div class="actions">
                 <button class="btn" data-action="quantum:mode" id="quantum-mode-btn"></button>
+                <button class="btn btn-soft" data-action="quantum:hint"><i data-icon="lightbulb" class="icon"></i>Hint</button>
                 <button class="btn" data-action="quantum:undo" id="quantum-undo-btn"><i data-icon="undo-2" class="icon"></i>Undo</button>
                 <button class="btn" data-action="app:rules" data-arg="quantum"><i data-icon="circle-help" class="icon"></i>How to play</button>
                 <button class="btn" data-action="quantum:reset"><i data-icon="rotate-ccw" class="icon"></i>Restart</button>
@@ -279,11 +288,12 @@
         </div>
 
         <div class="note" id="quantum-note">
-            <span class="note-icon"><i data-icon="lightbulb" class="icon"></i></span>
+            <span class="note-icon mascot-slot"></span>
             <div class="note-body">
                 <div class="note-title"><span class="eyebrow">Lab notes</span><span class="chip game new-badge">New to your journal</span></div>
                 <p class="note-text" id="quantum-fact"></p>
             </div>
+            <button class="icon-btn read-btn" data-action="app:read" data-arg="quantum" aria-label="Read this out loud"><i data-icon="volume-2" class="icon"></i></button>
         </div>
 
         <div class="layout">
@@ -300,7 +310,7 @@
                         <div class="legend-row"><span class="piece W">A</span><div><b>Atom</b><small>Your king: moves 1 square. When excited (gold dot) it moves up to 2 and re-emits the photon.</small></div></div>
                     </div>
                 </div>
-                <div class="panel">
+                <div class="panel adv">
                     <div class="panel-head"><h3>Move log</h3></div>
                     <div class="log" id="quantum-log"></div>
                 </div>
@@ -323,10 +333,23 @@
     </div>
 </div>
 
+<!-- Who's playing? -->
+<div class="modal" id="age-modal" hidden role="dialog" aria-modal="true" aria-labelledby="age-title">
+    <div class="modal-card">
+        <div class="result-hero">
+            <div class="end-mascot" id="age-mascot"></div>
+            <h3 id="age-title" style="font-size:1.8rem;font-weight:800">Who's playing?</h3>
+            <p class="muted">Pick an age group. The games change to match. You can switch any time from the top bar.</p>
+        </div>
+        <div class="age-grid" id="age-options"></div>
+    </div>
+</div>
+
 <!-- Results -->
 <div class="modal" id="end-modal" hidden role="dialog" aria-modal="true" aria-labelledby="end-title">
     <div class="modal-card" id="end-card">
         <div class="result-hero">
+            <div id="end-mascot" class="end-mascot"></div>
             <span class="chip" id="end-badge"></span>
             <h3 id="end-title" style="font-size:1.9rem;font-weight:800"></h3>
             <div class="result-stars" id="end-stars"></div>
@@ -350,6 +373,7 @@
             </div>
         </div>
         <div class="modal-actions">
+            <button class="btn" id="end-read" hidden><i data-icon="volume-2" class="icon"></i>Read to me</button>
             <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="house" class="icon"></i>All games</button>
             <button class="btn btn-primary" data-action="app:replay" id="end-replay"><i data-icon="rotate-ccw" class="icon"></i>Play again</button>
         </div>

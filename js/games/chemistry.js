@@ -5,10 +5,18 @@ import { $, showToast, logTo, clearLog, shake, pick, setMeter, floatPoints } fro
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
+import { isYoung, byAge, say } from '../core/age.js';
+import { moleculeSVG } from '../core/art.js';
+import { confetti } from '../core/confetti.js';
 import {
-    RECIPES, VALENCE, ATOM_FACTS, ATOM_WEIGHTS, ATOMIC_NUMBER,
-    WIN_SCORE, HAND_LIMIT, START_HAND, MARKET_SIZE, DISCOVERY_BONUS, DISCOVERY_FACT,
+    RECIPES as ALL_RECIPES, VALENCE, ATOM_FACTS, ATOM_WEIGHTS, ATOMIC_NUMBER,
+    WIN_SCORE as FULL_WIN, HAND_LIMIT, START_HAND, MARKET_SIZE, DISCOVERY_BONUS, DISCOVERY_FACT,
+    KID_RECIPES, KID_ATOMS, KID_ORDER, KID_ROUNDS,
 } from '../data/chemistry-data.js';
+
+// Ages 8-11 play with the 7 simpler molecules and race to 100.
+let RECIPES = ALL_RECIPES;
+let WIN_SCORE = FULL_WIN;
 
 const ATOM_POOL = Object.entries(ATOM_WEIGHTS).flatMap(([atom, n]) => Array(n).fill(atom));
 const drawAtom = () => pick(ATOM_POOL);
@@ -72,6 +80,12 @@ function bestTarget(hand) {
 }
 
 export function init() {
+    document.getElementById('screen-chemistry').classList.toggle('kid-mode', isYoung());
+    $('chem-you-label').textContent = isYoung() ? 'Molecules made' : 'You';
+    if (isYoung()) return initKid();
+    RECIPES = byAge({ middle: ALL_RECIPES.slice(0, 7), teen: ALL_RECIPES });
+    WIN_SCORE = byAge({ middle: 100, teen: FULL_WIN });
+    $('chem-goal').textContent = `Goal ${WIN_SCORE}`;
     state = {
         p1: 0,
         cpu: 0,
@@ -121,6 +135,7 @@ function render() {
             : `<span class="recipe-sub" style="color:var(--game)">+${DISCOVERY_BONUS} if you make it first</span>`;
         return `
         <div class="recipe ${ready ? 'is-ready' : ''}">
+            <span class="recipe-art">${moleculeSVG(r.formula, { size: 54, labels: false })}</span>
             <span class="recipe-name">${r.name[0]}${r.name.slice(1).toLowerCase()} <span class="recipe-formula">${r.formula}</span></span>
             <span class="recipe-pts num">+${r.pts}</span>
             ${sub}
@@ -147,6 +162,7 @@ function score(who, recipe) {
     else state.cpu += pts;
     if (first) teach('chemistry', DISCOVERY_FACT);
     teach('chemistry', recipe.fact);
+    if (who === 'YOU') showBuilt(recipe.formula);
     return { pts, first };
 }
 
@@ -170,6 +186,18 @@ function checkWinner() {
         metrics: { discoveries: Object.values(state.discovered).filter((w) => w === 'YOU').length },
     });
     return true;
+}
+
+// Big picture of the molecule you just built, shown on the bench for a moment.
+function showBuilt(formula) {
+    const pop = $('chem-built');
+    pop.innerHTML = `${moleculeSVG(formula, { size: 200 })}<b>${KID_RECIPES[formula]?.emoji ?? ''} ${isYoung() ? KID_RECIPES[formula].name : formula}</b>`;
+    pop.hidden = false;
+    pop.classList.remove('pop-in');
+    void pop.offsetWidth;
+    pop.classList.add('pop-in');
+    clearTimeout(showBuilt.t);
+    showBuilt.t = setTimeout(() => { pop.hidden = true; }, isYoung() ? 2600 : 1600);
 }
 
 function takeFromMarket(hand, i) {
@@ -276,6 +304,7 @@ const actions = {
     },
 
     unbench(i) {
+        if (state.kid) return;
         state.hand.push(state.bench.splice(i, 1)[0]);
         playSound('card');
         render();
@@ -344,7 +373,112 @@ const actions = {
     },
 };
 
+// ---------------------------------------------------------------------------
+// Molecule Match: the Explorer (ages 5-7) version. Copy the picture: tap the
+// atoms the target molecule needs. Empty circles on the bench show what's left.
+
+function initKid() {
+    const targets = KID_ORDER.slice(0, KID_ROUNDS);
+    state = { kid: true, targets, round: 0, bench: [], hand: [], mistakes: 0, streak: 0, made: 0, over: false };
+    clearLog('chem-log', 'Molecule Match started.');
+    resetFacts('chemistry', 'Atoms hold hands to make molecules. The dots on each atom show how many hands it has!');
+    dealKid();
+}
+
+const kidTarget = () => ALL_RECIPES.find((r) => r.formula === state.targets[state.round]);
+
+function dealKid() {
+    const target = kidTarget();
+    const needed = Object.entries(target.atoms).flatMap(([a, n]) => Array(n).fill(a));
+    const decoys = Object.keys(VALENCE).filter((a) => !target.atoms[a]);
+    const extras = [pick(decoys), pick(decoys)];
+    state.hand = [...needed, ...extras].sort(() => Math.random() - 0.5);
+    state.bench = [];
+    renderKid();
+}
+
+function renderKid() {
+    const target = kidTarget();
+    const info = KID_RECIPES[target.formula];
+    $('chem-target').innerHTML = `
+        <div class="target-art">${moleculeSVG(target.formula, { size: 150 })}</div>
+        <div class="target-text">
+            <span class="eyebrow">Molecule ${state.round + 1} of ${state.targets.length}</span>
+            <h3>${info.emoji} Make ${info.name.toLowerCase()}</h3>
+            <p class="muted">Tap the atoms that match the picture.</p>
+            <div class="progress-dots">${state.targets.map((_, i) => `<i class="${i < state.made ? 'done' : i === state.round ? 'now' : ''}"></i>`).join('')}</div>
+        </div>`;
+
+    // Bench: filled atoms, then dashed circles for the ones still needed.
+    const counts = countAtoms(state.bench);
+    const missingAtoms = Object.entries(target.atoms).flatMap(([a, n]) => Array(Math.max(0, n - (counts[a] || 0))).fill(a));
+    $('chem-bench-slots').innerHTML = state.bench.map((a, i) => atomCard(a, 'unbench', i, 'on-bench'))
+        .concat(missingAtoms.map((a) => `<span class="atom-slot" style="--el:var(--el-${a})"><span>${a}</span></span>`)).join('');
+
+    $('chem-hand').innerHTML = state.hand.map((a, i) => atomCard(a, 'bench', i)).join('');
+    $('chem-p1').textContent = state.made;
+    setMeter('chem-p1-bar', null, (state.made / state.targets.length) * 100);
+}
+
+function kidPick(i) {
+    const target = kidTarget();
+    const atom = state.hand[i];
+    const have = state.bench.filter((a) => a === atom).length;
+    if (!target.atoms[atom] || have >= target.atoms[atom]) {
+        state.mistakes += 1;
+        state.streak = 0;
+        playSound('error');
+        shake($('chem-hand').children[i]);
+        showToast(target.atoms[atom] ? `You already have enough ${atom}!` : `${KID_RECIPES[target.formula].name} doesn't need ${atom}. Try another!`);
+        teach('chemistry', KID_ATOMS[atom]);
+        return;
+    }
+    state.hand.splice(i, 1);
+    state.bench.push(atom);
+    playSound('card');
+    teach('chemistry', KID_ATOMS[atom]);
+
+    const done = Object.entries(target.atoms).every(([a, n]) => state.bench.filter((x) => x === a).length === n);
+    if (!done) return renderKid();
+
+    state.made += 1;
+    state.streak += 1;
+    playSound('win');
+    confetti(70);
+    renderKid();
+    showBuilt(target.formula);
+    teach('chemistry', say(target.fact, KID_RECIPES[target.formula].kid));
+    floatPoints(state.streak >= 3 ? `${state.streak} in a row!` : 'Great!', $('chem-bench'));
+    logTo('chem-log', `You made ${KID_RECIPES[target.formula].name}.`);
+
+    setTimeout(() => {
+        if (state.over) return;
+        if (state.round + 1 >= state.targets.length) return finishKid();
+        state.round += 1;
+        dealKid();
+    }, 1800);
+}
+
+function finishKid() {
+    state.over = true;
+    const stars = state.mistakes <= 1 ? 3 : state.mistakes <= 4 ? 2 : 1;
+    onGameOver({
+        won: true,
+        title: 'You made all the molecules!',
+        score: state.made * 10 + Math.max(0, 30 - state.mistakes * 5),
+        kidStars: stars,
+        stats: [['Molecules made', state.made], ['Oops taps', state.mistakes]],
+        metrics: {},
+    });
+}
+
 export function handle(action, arg) {
+    if (state.kid) {
+        if (action === 'reset') return init();
+        if (state.over) return;
+        if (action === 'bench') return kidPick(Number(arg));
+        return;
+    }
     if (state.over && action !== 'reset') {
         showToast('Game over. Press Restart to play again.');
         return;
@@ -395,7 +529,7 @@ document.addEventListener('pointerup', (e) => {
     suppressClick = true;
     setTimeout(() => { suppressClick = false; }, 0);
     if (document.elementFromPoint(e.clientX, e.clientY)?.closest('#chem-bench')) {
-        actions.bench(Number(tile.dataset.arg));
+        handle('bench', tile.dataset.arg);
     }
 });
 

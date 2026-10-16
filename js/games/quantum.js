@@ -6,7 +6,11 @@ import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
 import { settings, saveSettings } from '../core/storage.js';
-import { QUANTUM_FACTS as F } from '../data/quantum-data.js';
+import { QUANTUM_FACTS, QUANTUM_KID } from '../data/quantum-data.js';
+import { isYoung, say } from '../core/age.js';
+
+// Facts in the right words for the player's age group.
+const F = new Proxy({}, { get: (_, key) => say(QUANTUM_FACTS[key], QUANTUM_KID[key]) });
 import {
     SIZE, rc, enemy, startPosition, clonePosition, occupant, legalTargets, applyMove, chooseMove,
 } from './quantum-engine.js';
@@ -31,10 +35,12 @@ const cpuToMove = () => vsCpu() && state.pos.turn === CPU_COLOR && !state.over;
 
 export function init() {
     clearTimeout(cpuTimer);
+    document.getElementById('screen-quantum').classList.toggle('kid-mode', isYoung());
     state = {
         pos: startPosition(),
         selected: null,     // piece id
         pendingFirst: null, // first superposition square for an electron
+        hint: null,         // suggested move to highlight
         history: [],        // positions before each move, for UNDO
         moves: 0,
         over: false,
@@ -79,6 +85,7 @@ function narrate(events) {
 }
 
 function play(move) {
+    state.hint = null;
     state.history.push(clonePosition(state.pos));
     const events = applyMove(state.pos, move);
     state.moves += 1;
@@ -92,7 +99,7 @@ function play(move) {
 
 function cpuMove() {
     if (!cpuToMove()) return;
-    const level = byDifficulty({ easy: 0, normal: 1, hard: 2 });
+    const level = isYoung() ? 0 : byDifficulty({ easy: 0, normal: 1, hard: 2 });
     let move = chooseMove(state.pos, level);
     if (!move) return;
     // Picking up a superposed electron measures it first, then the CPU re-plans.
@@ -115,7 +122,7 @@ function finish() {
     const survivors = state.pos.pieces.filter((p) => p.color === winner).length;
     onGameOver({
         won: vsCpu() ? humanWon : true,
-        title: vsCpu() ? (humanWon ? 'You outplayed the CPU' : 'The CPU wins this one') : `${NAMES[winner][0]}${NAMES[winner].slice(1).toLowerCase()} wins`,
+        title: vsCpu() ? (humanWon ? (isYoung() ? 'You caught the atom!' : 'You outplayed the CPU') : (isYoung() ? 'So close! Try again' : 'The CPU wins this one')) : `${NAMES[winner][0]}${NAMES[winner].slice(1).toLowerCase()} wins`,
         // Only wins against the CPU count for the high score; faster wins score more.
         score: vsCpu() && humanWon ? Math.max(50, 300 - state.moves * 5 + survivors * 10) : null,
         stats: [
@@ -125,6 +132,7 @@ function finish() {
             ['Pieces left', survivors],
         ],
         metrics: { vsCpu: vsCpu() },
+        kidStars: humanWon ? 3 : survivors >= 4 ? 2 : 1,
     });
 }
 
@@ -166,6 +174,11 @@ function render() {
         if (sel && sel.squares.includes(sq)) classes.push('selected');
         if (state.pendingFirst === sq) classes.push('pending');
         if (targets.includes(sq)) classes.push('target', piece && piece.color !== sel.color ? 'capture' : '');
+        if (state.hint) {
+            const from = pieceById(state.hint.id)?.squares[0];
+            if (sq === from) classes.push('hint-from');
+            if (state.hint.to.includes(sq)) classes.push('hint-to');
+        }
         tile.className = classes.filter(Boolean).join(' ');
         let html = c === 0 || r === SIZE - 1 ? `<span class="coord">${label(sq)}</span>` : '';
         if (piece) {
@@ -221,6 +234,21 @@ function click(sq) {
     play({ id: sel.id, to: [sq] });
 }
 
+// Shows a good move for the player to move, using the CPU's own thinking.
+function hint() {
+    if (state.over || cpuToMove()) return;
+    const level = isYoung() ? 1 : 2;
+    const move = chooseMove(clonePosition(state.pos), level);
+    if (!move) return;
+    state.hint = { id: move.id, to: [move.to[0]] };
+    state.selected = null;
+    state.pendingFirst = null;
+    playSound('quantum');
+    const piece = pieceById(move.id);
+    showToast(`Try moving the glowing ${TYPE_NAMES[piece.type].toLowerCase()} to the glowing square`);
+    render();
+}
+
 function undo() {
     clearTimeout(cpuTimer);
     if (!state.history.length) {
@@ -245,6 +273,7 @@ function undo() {
 export function handle(action, arg) {
     if (action === 'reset') return init();
     if (action === 'undo') return undo();
+    if (action === 'hint') return hint();
     if (action === 'mode') {
         settings.quantumMode = vsCpu() ? 'pvp' : 'cpu';
         saveSettings();

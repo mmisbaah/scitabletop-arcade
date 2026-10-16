@@ -2,14 +2,19 @@
 
 export const PATHOGENS = {
     RHINOVIRUS: { kind: 'virus', hp: 1,
+        kid: 'This germ gives you a cold and a runny nose. It is a virus.',
         fact: 'Rhinovirus causes most common colds. Viruses are not alive on their own: they hijack your cells to copy themselves, so antibiotics do nothing to them.' },
     INFLUENZA: { kind: 'virus', hp: 2,
+        kid: 'This virus gives people the flu. A flu shot helps your body get ready for it.',
         fact: 'Influenza changes its surface proteins a little every year (antigenic drift). That is why the flu vaccine is updated every season.' },
     'E. COLI': { kind: 'bacteria', hp: 2,
+        kid: 'Lots of these bacteria live in your tummy and are friendly. A few kinds can make you sick.',
         fact: 'Most E. coli strains live harmlessly in your gut. A few make toxins. Bacteria are whole living cells, which is why antibiotics can kill them.' },
     STREP: { kind: 'bacteria', hp: 3,
+        kid: 'This germ can give you a very sore throat. A doctor can check with a quick swab.',
         fact: 'Streptococcus causes strep throat. Left untreated it can trigger rheumatic fever, which is why doctors swab sore throats.' },
     SALMONELLA: { kind: 'bacteria', hp: 3,
+        kid: 'This germ can hide in food that is not cooked enough. That is why we cook eggs and chicken well!',
         fact: 'Salmonella spreads through undercooked food, and it can survive inside macrophages, the very cells sent to eat it.' },
 };
 
@@ -24,10 +29,13 @@ export const WAVES = [
 
 export const ABILITIES = {
     macrophage: { label: 'Macrophage', cost: 1, hint: '1 damage, 2 against bacteria', target: 'pathogen', color: 'bg-rose-900 hover:bg-rose-800',
+        kid: 'Gobbler cells swallow germs whole, gulp!', kidLabel: 'Gobbler',
         fact: 'Macrophages belong to the innate immune system: fast, generic, and they swallow anything that looks foreign (phagocytosis). Bacteria are big enough to eat whole.' },
     tcell: { label: 'T-cell', cost: 2, hint: 'Destroys one virus outright', target: 'virus', color: 'bg-emerald-900 hover:bg-emerald-800',
+        kid: 'Zapper cells find germs hiding inside your body and zap them.', kidLabel: 'Zapper',
         fact: 'Killer T-cells inspect your own cells for signs of viral infection and destroy the infected ones, so the virus has nowhere to copy itself.' },
     bcell: { label: 'B-cell', cost: 2, hint: '1 damage to a whole lane', target: 'zone', color: 'bg-indigo-900 hover:bg-indigo-800',
+        kid: 'Tagger cells shoot tiny Y-shaped tags that stick to germs.', kidLabel: 'Tagger',
         fact: 'B-cells pour out antibodies: Y-shaped proteins that lock onto one specific pathogen and tag it for destruction. An activated B-cell (a plasma cell) can release about 2,000 a second.' },
 };
 
@@ -40,6 +48,20 @@ export const MEMORY_FACTS = {
     fission: 'Binary fission: a bacterium copies its DNA and splits in two. In good conditions E. coli can do it every 20 minutes.',
     replicate: 'Viral replication: a virus injects its genes into one of your cells, which then builds hundreds of new viruses and bursts.',
     vaccine: 'This is how vaccines work: they show your immune system a harmless piece of a pathogen so memory cells are ready before the real thing arrives.',
+};
+
+export const IMMUNE_KID = {
+    intro: 'Germs are trying to get in! Tap a germ to send a helper cell after it.',
+    breach: 'Some germs got through. Your body gets a fever to fight them.',
+    learned: 'Your body remembers germs it has beaten, so it can beat them faster next time.',
+    grow: 'Germs that get inside can make copies of themselves. Catch them early!',
+};
+
+// Explorers: 3 waves, extra energy, gentle breaches, no multiplying.
+export const AGE_TUNING = {
+    young: { waves: 3, ap: 4, breach: 5, growth: 0, autoTarget: true },
+    middle: { growthScale: 0.6 },
+    teen: {},
 };
 
 export const IMMUNE_CONFIG = {

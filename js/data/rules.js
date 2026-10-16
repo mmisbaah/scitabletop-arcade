@@ -23,6 +23,37 @@ export const CARTRIDGES = [
     },
 ];
 
+// Shorter names, blurbs and rules for Explorers (ages 5-7).
+export const KID_CARTRIDGES = {
+    chemistry: { title: 'Molecule Match', blurb: 'Copy the picture! Tap atoms to build water, salt and more.' },
+    ecosystem: { title: 'Feed the Forest', blurb: 'Add plants and animals and keep everyone happy and fed.' },
+    immune: { title: 'Germ Busters', blurb: 'Tap the germs before they get in. Your helper cells do the rest!' },
+    quantum: { title: 'Quantum Hop', blurb: 'A chess game where your pieces can be in two places at once.' },
+};
+
+export const KID_RULES = {
+    chemistry: [
+        'Look at the picture of the molecule at the top.',
+        'Tap the atoms that match the picture. The empty circles show what you still need.',
+        'Fill every circle to make the molecule. Make 6 molecules to finish!',
+    ],
+    ecosystem: [
+        'Tap an animal or plant card to add it to the forest. You get 2 each season.',
+        'Plants feed plant-eaters. Plant-eaters feed hunters. A sad face means someone is hungry.',
+        'Press Next season. Keep the forest happy for 6 seasons!',
+    ],
+    immune: [
+        'Germs come in from the left. Tap a germ to send a helper after it.',
+        'Each helper uses an energy dot. Press End turn to get your dots back.',
+        'Stop the germs before they reach the heart. Get through 3 waves!',
+    ],
+    quantum: [
+        'You are blue. Tap one of your pieces, then tap a dot to move it.',
+        'Stuck? Press Hint and the game will show you a good move.',
+        'Catch the pink A piece to win!',
+    ],
+};
+
 export const RULES = {
     chemistry: {
         title: 'ELEMENTAL ALCHEMY RULES',

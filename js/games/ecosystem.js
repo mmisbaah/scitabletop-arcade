@@ -5,9 +5,13 @@ import { $, showToast, logTo as rawLog, clearLog, setMeter, pick } from '../core
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
-import { SPECIES, DRAW_WEIGHTS, EVENTS, ECO_FACTS, ECO_CONFIG as CFG } from '../data/species.js';
+import { isYoung, byAge, say } from '../core/age.js';
+import { SPECIES, DRAW_WEIGHTS, EVENTS, ECO_FACTS, ECO_KID, SEASON_NAMES, AGE_TUNING, ECO_CONFIG as CFG } from '../data/species.js';
 
-const DRAW_POOL = Object.entries(DRAW_WEIGHTS).flatMap(([name, n]) => Array(n).fill(name));
+const FULL_POOL = Object.entries(DRAW_WEIGHTS).flatMap(([name, n]) => Array(n).fill(name));
+let DRAW_POOL = FULL_POOL;
+let T = {}; // age tuning for the current game
+const ecoFact = (key) => say(ECO_FACTS[key], ECO_KID[key]);
 const TIERS = ['producer', 'herbivore', 'predator'];
 const TIER_STYLE = {
     producer: 'border-emerald-700 text-emerald-300',
@@ -62,18 +66,22 @@ function energyReport() {
 }
 
 export function init() {
+    T = byAge(AGE_TUNING);
+    document.getElementById('screen-ecosystem').classList.toggle('kid-mode', isYoung());
+    DRAW_POOL = T.noKudzu ? FULL_POOL.filter((n) => !SPECIES[n].invasive) : FULL_POOL;
     state = {
         season: 1,
-        stability: CFG.startStability,
+        seasons: T.seasons ?? CFG.seasons,
+        stability: T.startStability ?? CFG.startStability,
         plays: CFG.playsPerSeason,
         board: structuredClone(CFG.startBoard),
-        hand: [...CFG.startHand],
+        hand: [...(T.startHand ?? CFG.startHand)],
         drought: false,
         lastEvent: 'NONE',
         over: false,
     };
     clearLog('eco-log', 'Season 1. Plants and grazers, but no predators yet.');
-    resetFacts('ecosystem', ECO_FACTS.intro);
+    resetFacts('ecosystem', ecoFact('intro'));
     render();
 }
 
@@ -84,7 +92,7 @@ function render() {
     setMeter('eco-stab-bar', 'eco-stab-val', state.stability);
     const stab = $('eco-stab-bar').parentElement;
     stab.className = `meter ${state.stability > 50 ? 'good' : state.stability > 25 ? 'warn' : 'bad'}`;
-    $('eco-season').textContent = `${Math.min(state.season, CFG.seasons)} / ${CFG.seasons}`;
+    $('eco-season').textContent = `${Math.min(state.season, state.seasons)} / ${state.seasons}`;
     $('eco-plays').textContent = state.plays;
 
     const hasWolf = state.board.predator.includes('WOLF');
@@ -96,10 +104,18 @@ function render() {
     $('eco-event').textContent = state.lastEvent === 'NONE' ? 'Calm season' : cap(state.lastEvent);
 
     const e = energyReport();
+    renderScene(e);
     const fed = (food, need) => (need === 0 ? '' : food >= need ? 'ok' : 'short');
+    if (isYoung()) {
+        const mood = (food, need) => (need === 0 ? '<span>Nobody here yet</span>' : food >= need ? '<span class="ok">😀 Everyone is fed</span>' : '<span class="short">😟 Some are hungry!</span>');
+        $('eco-energy-producer').innerHTML = '<span class="ok">☀️ Making food from sunshine</span>';
+        $('eco-energy-herbivore').innerHTML = mood(e.herbFood, e.herbNeed);
+        $('eco-energy-predator').innerHTML = mood(e.predFood, e.predNeed);
+    } else {
     $('eco-energy-producer').innerHTML = `<span class="ok">${Math.round(e.plantEnergy)}</span> energy made`;
     $('eco-energy-herbivore').innerHTML = `Food <span class="${fed(e.herbFood, e.herbNeed)}">${Math.round(e.herbFood)}</span> of ${e.herbNeed} needed`;
     $('eco-energy-predator').innerHTML = `Food <span class="${fed(e.predFood, e.predNeed)}">${e.predFood.toFixed(1)}</span> of ${e.predNeed} needed`;
+    }
 
     for (const tier of TIERS) {
         $(`eco-tier-${tier}`).innerHTML = state.board[tier].map((name, i) => {
@@ -129,6 +145,37 @@ function render() {
     }).join('') || '<span class="empty">No reserve species. One arrives each season.</span>';
 }
 
+// A picture of the habitat: sky and ground change with the season, plants sit
+// on the ground, grazers wander, hunters prowl and birds circle overhead.
+const FLYERS = new Set(['OWL', 'HAWK']);
+
+function renderScene(e) {
+    const scene = $('eco-scene');
+    const season = SEASON_NAMES[(state.season - 1) % 4];
+    scene.className = `scene season-${season.toLowerCase()}`;
+    const herbHungry = e.herbNeed > 0 && e.herbFood < e.herbNeed;
+    const predHungry = e.predNeed > 0 && e.predFood < e.predNeed;
+    const place = (name, i, n, row, hungry) => {
+        const left = n === 1 ? 50 : 8 + (i * 84) / Math.max(1, n - 1);
+        const delay = ((i * 0.37) % 1.6).toFixed(2);
+        return `<span class="critter ${row} ${SPECIES[name].invasive ? 'vine' : ''}" style="left:${left}%;animation-delay:-${delay}s" title="${cap(name)}">
+            ${SPECIES[name].icon}${hungry ? '<i class="mood">😟</i>' : ''}</span>`;
+    };
+    const plants = state.board.producer;
+    const grazers = state.board.herbivore;
+    const birds = state.board.predator.filter((n) => FLYERS.has(n));
+    const hunters = state.board.predator.filter((n) => !FLYERS.has(n));
+    scene.innerHTML = `
+        <div class="sky-body">${season === 'Winter' ? '❄️' : season === 'Autumn' ? '🍂' : '☀️'}</div>
+        <div class="season-tag">${season} · season ${Math.min(state.season, state.seasons)} of ${state.seasons}</div>
+        ${birds.map((n, i) => place(n, i, birds.length, 'sky', predHungry)).join('')}
+        <div class="ground"></div>
+        ${hunters.map((n, i) => place(n, i, hunters.length, 'prowl', predHungry)).join('')}
+        ${grazers.map((n, i) => place(n, i, grazers.length, 'graze', herbHungry)).join('')}
+        ${plants.map((n, i) => place(n, i, plants.length, 'plant', false)).join('')}
+        ${state.drought ? '<div class="weather">🔥 Drought</div>' : ''}`;
+}
+
 function spendPlay() {
     if (state.plays <= 0) {
         playSound('error');
@@ -142,7 +189,7 @@ function spendPlay() {
 function rollEvent(notes) {
     state.drought = false;
     state.lastEvent = 'NONE';
-    if (Math.random() >= byDifficulty({ easy: 0.15, normal: 0.25, hard: 0.35 })) return 0;
+    if (Math.random() >= (T.events ?? byDifficulty({ easy: 0.15, normal: 0.25, hard: 0.35 }) * (T.eventScale ?? 1))) return 0;
 
     const kind = pick(Object.keys(EVENTS));
     state.lastEvent = EVENTS[kind].name;
@@ -198,7 +245,7 @@ function simulateSeason() {
         if (!SPECIES[name].diet.some((prey) => state.board.herbivore.includes(prey))) {
             state.board.predator.splice(state.board.predator.indexOf(name), 1);
             notes.push(`${name} found none of its prey (${SPECIES[name].diet.join(', ')}) and starved.`);
-            teach('ecosystem', ECO_FACTS.noPrey);
+            teach('ecosystem', ecoFact('noPrey'));
             delta -= 4;
         }
     }
@@ -215,7 +262,7 @@ function simulateSeason() {
         if (ratio < 1) {
             delta -= 10;
             notes.push(`Herbivores got ${Math.round(e.herbFood)} of ${e.herbNeed} food. ${removeRandom('herbivore')} starved.`);
-            teach('ecosystem', ECO_FACTS.starve);
+            teach('ecosystem', ecoFact('starve'));
         } else {
             delta += ratio <= 4 ? 3 : -2;
             if (ratio > 4) notes.push('Plenty of plants go uneaten. Room for more grazers.');
@@ -237,14 +284,14 @@ function simulateSeason() {
             delta -= 10;
             const grazed = removeRandom('producer', (n) => !isKudzu(n));
             notes.push(`No predators: herbivores overgrazed${grazed ? ` the ${grazed}` : ''}.`);
-            teach('ecosystem', ECO_FACTS.overgraze);
+            teach('ecosystem', ecoFact('overgraze'));
         }
     } else {
         const ratio = e.predFood / e.predNeed;
         if (ratio < 1) {
             delta -= 10;
             notes.push(`Predators got ${e.predFood.toFixed(1)} of ${e.predNeed} food. ${removeRandom('predator')} starved.`);
-            teach('ecosystem', ECO_FACTS.starve);
+            teach('ecosystem', ecoFact('starve'));
         } else {
             delta += ratio <= 4 ? 3 : -2;
         }
@@ -252,7 +299,7 @@ function simulateSeason() {
 
     if (diversity() >= CFG.diverseThreshold) {
         delta += 2;
-        teach('ecosystem', ECO_FACTS.diversity);
+        teach('ecosystem', ecoFact('diversity'));
     }
 
     // Healthy plants reseed themselves.
@@ -271,13 +318,14 @@ function finish() {
     const won = state.stability > 0;
     const score = won ? Math.round(state.stability + diversity()) : 0;
     playSound(won ? 'win' : 'lose');
-    logTo('eco-log', won ? `All ${CFG.seasons} seasons survived. Score ${score}.` : 'Stability hit 0. The food web collapsed.');
+    logTo('eco-log', won ? `All ${state.seasons} seasons survived. Score ${score}.` : 'Stability hit 0. The food web collapsed.');
     onGameOver({
         won,
-        title: won ? 'Your habitat thrived' : 'The ecosystem collapsed',
+        title: won ? (isYoung() ? 'Your forest is happy!' : 'Your habitat thrived') : (isYoung() ? 'The forest needs more help' : 'The ecosystem collapsed'),
+        kidStars: state.stability > 60 ? 3 : state.stability > 30 ? 2 : 1,
         score,
         stats: [
-            ['Seasons', `${state.season} / ${CFG.seasons}`],
+            ['Seasons', `${state.season} / ${state.seasons}`],
             ['Stability', `${state.stability}%`],
             ['Biodiversity', `${diversity()}%`],
         ],
@@ -293,7 +341,7 @@ const actions = {
         if (!spendPlay()) return;
         state.hand.splice(i, 1);
         playSound('card');
-        teach('ecosystem', SPECIES[name].fact);
+        teach('ecosystem', say(SPECIES[name].fact, SPECIES[name].kid));
         if (isKudzu(name)) {
             logTo('eco-log', 'You burned an invasive Kudzu seed.');
             showToast('Kudzu seed burned');
@@ -323,10 +371,10 @@ const actions = {
         state.hand = state.hand.filter((n) => !isKudzu(n));
         for (let s = 0; s < seeds; s++) state.board.producer.push('KUDZU');
         if (seeds) logTo('eco-log', `${seeds} Kudzu seed(s) blew into the habitat!`);
-        if (Math.random() < byDifficulty({ easy: 0.06, normal: 0.12, hard: 0.2 })) {
+        if (Math.random() < (T.invasion ?? byDifficulty({ easy: 0.06, normal: 0.12, hard: 0.2 }))) {
             state.board.producer.push('KUDZU');
             logTo('eco-log', 'Wild Kudzu invaded from a neighbouring field!');
-            teach('ecosystem', SPECIES.KUDZU.fact);
+            teach('ecosystem', say(SPECIES.KUDZU.fact, SPECIES.KUDZU.kid));
         }
 
         const { delta, notes } = simulateSeason();
@@ -335,7 +383,7 @@ const actions = {
         logTo('eco-log', `Season ${state.season} ends. Stability ${delta >= 0 ? '+' : ''}${delta}.`);
         state.drought = false;
 
-        if (state.stability <= 0 || state.season >= CFG.seasons) {
+        if (state.stability <= 0 || state.season >= state.seasons) {
             render();
             return finish();
         }

@@ -20,7 +20,7 @@ export function save(key, value) {
     }
 }
 
-const DEFAULT_SETTINGS = { audio: true, theme: 'system', difficulty: 'normal', quantumMode: 'cpu', seenRules: {} };
+const DEFAULT_SETTINGS = { audio: true, theme: 'system', difficulty: 'normal', age: null, quantumMode: 'cpu', seenRules: {} };
 
 export const settings = { ...DEFAULT_SETTINGS, ...load('settings', {}) };
 

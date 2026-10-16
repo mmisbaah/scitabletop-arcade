@@ -12,3 +12,16 @@ export const QUANTUM_FACTS = {
     emitted: 'Emission: the excited atom dropped back down and released a photon. Neon signs and LEDs glow this way.',
     atom: 'Atoms are mostly empty space: if the nucleus were a marble, the electrons would be buzzing around a stadium.',
 };
+
+export const QUANTUM_KID = {
+    intro: 'Tiny things like electrons can be in two places at once! Try it with your E pieces.',
+    superposition: 'Your electron is in two places at the same time. Spooky!',
+    observed: 'Someone came close and looked, so the electron had to pick just one spot.',
+    observationNote: 'Tiny particles only pick one spot when something checks on them.',
+    attacked: 'You checked that square. Was the electron really there?',
+    measured: 'You picked up your electron, so it chose one spot.',
+    photon: 'Photons are tiny bits of light. Light zooms in straight lines.',
+    absorbed: 'Your atom soaked up the light and got full of energy!',
+    emitted: 'Your atom let the light back out. That is how glow sticks glow.',
+    atom: 'Everything around you is made of atoms, even you!',
+};

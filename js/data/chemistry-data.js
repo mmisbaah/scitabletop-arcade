@@ -46,3 +46,32 @@ export const MARKET_SIZE = 5;
 export const DISCOVERY_BONUS = 10;
 export const DISCOVERY_FACT = 'First discovery: real chemists race too. Joseph Priestley and Carl Scheele both isolated oxygen in the 1770s, and historians still argue about who got there first.';
 export const ATOMIC_NUMBER = { H: 1, C: 6, N: 7, O: 8, Na: 11, Cl: 17 };
+
+// ---------- Explorers (ages 5-7) ----------
+// "Hands" stand in for bonds: H has 1 hand, O has 2, N has 3, C has 4.
+
+export const KID_RECIPES = {
+    H2: { emoji: '🎈', name: 'Hydrogen gas', kid: 'Two hydrogen atoms hold hands. This gas is so light that balloons filled with it float away!' },
+    O2: { emoji: '🫁', name: 'Oxygen', kid: 'Two oxygen atoms hold on with both hands. This is the oxygen you breathe in right now!' },
+    N2: { emoji: '🌬️', name: 'Nitrogen', kid: 'Two nitrogen atoms hold on with three hands each. Most of the air around you is nitrogen.' },
+    HCl: { emoji: '🧪', name: 'Stomach acid', kid: 'Hydrogen and chlorine join up. Your tummy uses a watery version of this to break down food.' },
+    H2O: { emoji: '💧', name: 'Water', kid: 'One oxygen holds hands with two hydrogens. That makes water! More than half of you is water.' },
+    NaCl: { emoji: '🧂', name: 'Salt', kid: 'Sodium and chlorine stick together like magnets. That is the salt on your food!' },
+    CO2: { emoji: '🌳', name: 'Carbon dioxide', kid: 'One carbon holds two oxygens. You breathe this out, and trees breathe it in.' },
+    NaOH: { emoji: '🧼', name: 'Soap maker', kid: 'Sodium, oxygen and hydrogen together make lye. People use it to make soap.' },
+    NH3: { emoji: '🌾', name: 'Ammonia', kid: 'One nitrogen holds three hydrogens. Farmers use it to help crops grow. It smells very strong!' },
+    CH4: { emoji: '🔥', name: 'Methane', kid: 'One carbon holds four hydrogens. Some stoves burn this gas to cook. Cows burp it too!' },
+};
+
+export const KID_ATOMS = {
+    H: 'Hydrogen is the smallest atom of all. It has 1 hand to hold.',
+    O: 'Oxygen has 2 hands to hold other atoms.',
+    C: 'Carbon has 4 hands! It is in every living thing, even you.',
+    N: 'Nitrogen has 3 hands to hold.',
+    Na: 'Sodium has 1 hand. On its own it fizzes in water!',
+    Cl: 'Chlorine has 1 hand. It is in salt and in swimming pools.',
+};
+
+// Molecules young players build, easiest first.
+export const KID_ORDER = ['H2', 'H2O', 'O2', 'NaCl', 'CO2', 'HCl', 'CH4', 'NH3'];
+export const KID_ROUNDS = 6;
