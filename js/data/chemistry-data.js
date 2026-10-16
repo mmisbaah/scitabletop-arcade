@@ -50,3 +50,6 @@ export const ATOM_COLORS = {
 export const WIN_SCORE = 150;
 export const HAND_LIMIT = 12;
 export const START_HAND = 7;
+export const MARKET_SIZE = 5;
+export const DISCOVERY_BONUS = 10;
+export const DISCOVERY_FACT = 'First discovery: real chemists race too. Joseph Priestley and Carl Scheele both isolated oxygen in the 1770s, and historians still argue about who got there first.';

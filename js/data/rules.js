@@ -33,10 +33,10 @@ export const RULES = {
         title: 'ELEMENTAL ALCHEMY RULES',
         lines: [
             'Click atoms in your hand to move them onto the Lab Bench. Click a bench atom to send it back.',
-            'SYNTHESIZE when the bench matches a recipe exactly (H2O needs two H and one O, nothing else).',
-            'Each successful synthesis, DRAW 2 or TRADE ends your turn, and the CPU then takes its own turn.',
-            'TRADE: press TRADE, then click one card in your hand to swap it for a random atom.',
-            'Hand limit is 12 atoms. First to 150 points wins.',
+            'SYNTHESIZE when the bench matches a recipe exactly. The small number on each atom is its valence: H2O works because O makes 2 bonds and each H makes 1.',
+            'Your turn is ONE of: synthesize, take 2 atoms of your choice from the shared market, draw 2 random atoms, or trade a card. Then the CPU plays.',
+            'The market is shared. The CPU takes from it too. On HARD it grabs the atom you are waiting for and gets a bonus atom each turn.',
+            'The first player to make each molecule earns a +10 discovery bonus. Hand limit is 12 atoms. First to 150 points wins.',
         ],
     },
     ecosystem: {

@@ -69,7 +69,7 @@
             <div class="game-header border-emerald-600">
                 <div>
                     <h2 class="font-pixel text-lg text-emerald-400 neon-text-green">ELEMENTAL ALCHEMY</h2>
-                    <p class="font-arcade text-lg text-slate-300">Build molecules from atom cards. First to 150 wins.</p>
+                    <p class="font-arcade text-lg text-slate-300">Race the CPU to 150. First to discover a molecule gets +10.</p>
                 </div>
                 <div class="flex items-center gap-2">
                     <button data-action="app:rules" data-arg="chemistry" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">RULES</button>
@@ -114,6 +114,14 @@
                             <button data-action="chemistry:synthesize" class="arcade-btn bg-emerald-500 hover:bg-emerald-400 text-black text-xs">SYNTHESIZE!</button>
                             <button data-action="chemistry:clear" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs">CLEAR</button>
                         </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <span class="font-pixel text-xs text-cyan-300">ATOM MARKET <span class="text-slate-500">(shared: take 2 = your turn)</span></span>
+                            <span id="chem-cpu-hand" class="font-pixel text-[10px] text-rose-300"></span>
+                        </div>
+                        <div id="chem-market" class="flex flex-wrap gap-2 min-h-[70px] p-3 bg-slate-900 border-2 border-cyan-900 items-center"></div>
                     </div>
 
                     <div class="space-y-2">
