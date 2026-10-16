@@ -2,6 +2,8 @@
 
 import { $, showToast, logTo, clearLog, pick } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
+import { teach, resetFacts } from '../core/facts.js';
+import { QUANTUM_FACTS as F } from '../data/quantum-data.js';
 
 const SIZE = 8;
 const NAMES = { W: 'CYAN', B: 'ROSE' };
@@ -45,6 +47,7 @@ export function init() {
         over: false,
     };
     clearLog('quantum-log', 'Board ready. Cyan moves first.');
+    resetFacts('quantum', F.intro);
     render();
 }
 
@@ -87,6 +90,8 @@ function collapse(piece, reason) {
     piece.squares = [real];
     playSound('quantum');
     logTo('quantum-log', `${NAMES[piece.color]} electron collapsed to ${label(real)} (${reason}).`);
+    teach('quantum', reason === 'observed' ? F.observed : reason === 'attacked' ? F.attacked : F.measured);
+    if (reason === 'observed') teach('quantum', F.observationNote);
     return real;
 }
 
@@ -117,6 +122,9 @@ function finishMove(mover, squares) {
     mover.squares = squares;
     const where = squares.map(label).join(' + ');
     logTo('quantum-log', `${NAMES[mover.color]} ${TYPE_NAMES[mover.type]} -> ${where}${squares.length > 1 ? ' (superposition)' : ''}`);
+    if (squares.length > 1) teach('quantum', F.superposition);
+    else if (mover.type === 'P') teach('quantum', F.photon);
+    else if (mover.type === 'A') teach('quantum', F.atom);
     if (state.over) return;
     observeAll();
     state.selected = null;

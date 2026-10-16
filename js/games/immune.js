@@ -2,12 +2,13 @@
 
 import { $, showToast, logTo, clearLog, setMeter, shake } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
-import { PATHOGENS, WAVES, ABILITIES, IMMUNE_CONFIG as CFG } from '../data/pathogens.js';
+import { teach, resetFacts } from '../core/facts.js';
+import { PATHOGENS, WAVES, ABILITIES, BREACH_FACT, IMMUNE_CONFIG as CFG } from '../data/pathogens.js';
 
 let state;
 let nextId = 1;
 
-const spawn = (name) => ({ id: nextId++, name, ...PATHOGENS[name] });
+const spawn = (name) => ({ id: nextId++, name, kind: PATHOGENS[name].kind, hp: PATHOGENS[name].hp });
 
 export function init() {
     state = {
@@ -19,6 +20,7 @@ export function init() {
         over: false,
     };
     clearLog('immune-log', 'Wave 1 has entered the bloodstream.');
+    resetFacts('immune', 'Viruses (purple) and bacteria (red) are very different enemies. Your body uses different cells for each.');
     render();
 }
 
@@ -68,6 +70,7 @@ function damage(z, p, amount) {
     if (p.hp <= 0) {
         state.zones[z] = state.zones[z].filter((x) => x.id !== p.id);
         logTo('immune-log', `${p.name} destroyed.`);
+        teach('immune', PATHOGENS[p.name].fact);
         return true;
     }
     logTo('immune-log', `${p.name} hit for ${amount}. ${p.hp} HP left.`);
@@ -101,6 +104,7 @@ const actions = {
             return;
         }
         state.armed = state.armed === key ? null : key;
+        if (state.armed) teach('immune', a.fact);
         playSound('card');
         render();
     },
@@ -152,6 +156,7 @@ const actions = {
             shake($('immune-zone-2'));
             logTo('immune-log', `BREACH! Organ takes ${breach} damage.`);
             showToast(`ORGAN BREACH! -${breach}%`);
+            teach('immune', BREACH_FACT);
         } else {
             playSound('synth');
         }

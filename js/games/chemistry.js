@@ -2,7 +2,8 @@
 
 import { $, showToast, logTo, clearLog, shake } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
-import { RECIPES, ATOM_WEIGHTS, ATOM_COLORS, WIN_SCORE, HAND_LIMIT, START_HAND } from '../data/chemistry-data.js';
+import { teach, resetFacts } from '../core/facts.js';
+import { RECIPES, VALENCE, ATOM_FACTS, ATOM_WEIGHTS, ATOM_COLORS, WIN_SCORE, HAND_LIMIT, START_HAND } from '../data/chemistry-data.js';
 
 const ATOM_POOL = Object.entries(ATOM_WEIGHTS).flatMap(([atom, n]) => Array(n).fill(atom));
 const drawAtom = () => ATOM_POOL[Math.floor(Math.random() * ATOM_POOL.length)];
@@ -27,6 +28,19 @@ function canBuild(counts, recipe) {
     return Object.entries(recipe.atoms).every(([k, n]) => (counts[k] || 0) >= n);
 }
 
+const formatCounts = (counts) => Object.entries(counts).map(([k, n]) => `${k}${n > 1 ? n : ''}`).join(' ');
+
+// Explains why a bench didn't make a molecule, using the closest recipe.
+function explainMiss(counts) {
+    const diff = (r) => {
+        const keys = new Set([...Object.keys(r.atoms), ...Object.keys(counts)]);
+        return [...keys].reduce((sum, k) => sum + Math.abs((r.atoms[k] || 0) - (counts[k] || 0)), 0);
+    };
+    const closest = [...RECIPES].sort((a, b) => diff(a) - diff(b))[0];
+    const bonds = Object.keys(closest.atoms).map((k) => `${k} makes ${VALENCE[k]}`).join(', ');
+    return `Close to ${closest.formula}, which needs ${formatCounts(closest.atoms)}. You have ${formatCounts(counts) || 'nothing'}. Bonds have to balance: ${bonds}.`;
+}
+
 function removeAtoms(list, atoms) {
     const out = [...list];
     for (const [k, n] of Object.entries(atoms)) {
@@ -47,6 +61,7 @@ export function init() {
         over: false,
     };
     clearLog('chem-log', 'Lab open. Build a molecule or draw atoms.');
+    resetFacts('chemistry', 'The small number on each atom is its valence: how many bonds it makes. A molecule works when every bond is used.');
     render();
 }
 
@@ -80,7 +95,8 @@ function render() {
     $('chem-hand').innerHTML = state.hand.map((a, i) => `
         <button data-action="chemistry:bench" data-arg="${i}"
             class="w-11 h-14 bg-slate-950 border-2 ${ATOM_COLORS[a]} font-pixel text-xs hover:border-yellow-400 shadow-[2px_2px_0px_#000]
-            ${state.trading ? 'outline outline-2 outline-dashed outline-yellow-400' : ''}">${a}</button>
+            relative ${state.trading ? 'outline outline-2 outline-dashed outline-yellow-400' : ''}" title="Valence ${VALENCE[a]}">
+            ${a}<span class="absolute top-0.5 right-1 text-[8px] text-yellow-300">${VALENCE[a]}</span></button>
     `).join('') || `<span class="font-pixel text-[10px] text-slate-500">EMPTY HAND, DRAW!</span>`;
 }
 
@@ -124,7 +140,9 @@ const actions = {
 
     bench(i) {
         if (state.trading) return tradeCard(i);
-        state.bench.push(state.hand.splice(i, 1)[0]);
+        const atom = state.hand.splice(i, 1)[0];
+        state.bench.push(atom);
+        teach('chemistry', ATOM_FACTS[atom]);
         playSound('card');
         render();
     },
@@ -148,12 +166,14 @@ const actions = {
             playSound('error');
             shake($('chem-bench'));
             showToast('INVALID MOLECULE RATIO!');
+            teach('chemistry', explainMiss(counts));
             return;
         }
         playSound('synth');
         state.p1 += match.pts;
         state.bench = [];
         showToast(`SYNTHESIZED ${match.name}! +${match.pts}`);
+        teach('chemistry', match.fact);
         logTo('chem-log', `You synthesized ${match.formula} (+${match.pts}).`);
         endPlayerTurn();
     },

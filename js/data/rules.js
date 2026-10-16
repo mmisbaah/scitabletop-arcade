@@ -65,6 +65,7 @@ export const RULES = {
             'ATOM moves 1 square any direction. PHOTON slides any distance in a straight line.',
             'ELECTRON jumps to any square within 2. Pick two different empty squares to put it in SUPERPOSITION, or the same square twice for a normal move.',
             'A superposed electron collapses to one square (50/50) the moment a rival piece ends next to it, or when it is attacked. Attack the wrong square and it was never there.',
+            'Science note: in real physics any interaction that reveals where a particle is causes collapse, not just a neighbour. Adjacency is a simplification so the board stays readable.',
             'Capture the rival ATOM to win.',
         ],
     },
