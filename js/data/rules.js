@@ -62,10 +62,11 @@ export const RULES = {
     quantum: {
         title: 'QUANTUM LEAP CHESS RULES',
         lines: [
-            'Cyan moves first. Click a piece, then click a highlighted square.',
-            'ATOM moves 1 square any direction. PHOTON slides any distance in a straight line.',
-            'ELECTRON jumps to any square within 2. Pick two different empty squares to put it in SUPERPOSITION, or the same square twice for a normal move.',
-            'A superposed electron collapses to one square (50/50) the moment a rival piece ends next to it, or when it is attacked. Attack the wrong square and it was never there.',
+            'You are Cyan and move first. Play the CPU (Rose) or switch MODE to 2-player hotseat. UNDO takes back your last move.',
+            'Click a piece, then a highlighted square. ATOM moves 1 square. PHOTON slides in a straight line. ELECTRON jumps to any square within 2.',
+            'SUPERPOSITION: move an electron to two different empty squares and it sits on both, or click the same square twice for a normal move.',
+            'A superposed electron collapses to one square (50/50) when a rival piece ends next to it or attacks it. Attack the wrong square and it was never there.',
+            'ABSORPTION: slide a photon onto your own Atom. The Atom becomes excited: its next move can reach 2 squares, and it re-emits the photon on the square it leaves.',
             'Science note: in real physics any interaction that reveals where a particle is causes collapse, not just a neighbour. Adjacency is a simplification so the board stays readable.',
             'Capture the rival ATOM to win.',
         ],

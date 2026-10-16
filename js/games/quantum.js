@@ -1,152 +1,137 @@
-// GAME 4: Quantum Leap Chess. Two-player hotseat with superposed electrons.
+// GAME 4: Quantum Leap Chess. UI layer: board rendering, clicks, undo, and
+// handing turns to the CPU. The rules live in quantum-engine.js.
 
-import { $, showToast, logTo, clearLog, pick } from '../core/ui.js';
+import { $, showToast, logTo, clearLog } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
+import { byDifficulty } from '../core/difficulty.js';
+import { settings, saveSettings } from '../core/storage.js';
 import { QUANTUM_FACTS as F } from '../data/quantum-data.js';
+import {
+    SIZE, rc, enemy, startPosition, clonePosition, occupant, legalTargets, applyMove, chooseMove,
+} from './quantum-engine.js';
 
-const SIZE = 8;
 const NAMES = { W: 'CYAN', B: 'ROSE' };
 const TYPE_NAMES = { A: 'Atom', P: 'Photon', E: 'Electron' };
 const COLOR_CLASS = { W: 'text-cyan-300', B: 'text-rose-400' };
+const CPU_COLOR = 'B';
+const CPU_DELAY = 450;
 
-// [row, col, type] for the cyan side. Rose is mirrored top-to-bottom.
-const SETUP = [
-    [7, 0, 'P'], [7, 3, 'E'], [7, 4, 'A'], [7, 5, 'E'], [7, 7, 'P'],
-    [6, 3, 'E'], [6, 4, 'E'],
-];
-
-const rc = (sq) => [Math.floor(sq / SIZE), sq % SIZE];
-const toSq = (r, c) => r * SIZE + c;
-const onBoard = (r, c) => r >= 0 && r < SIZE && c >= 0 && c < SIZE;
-const dist = (a, b) => {
-    const [r1, c1] = rc(a);
-    const [r2, c2] = rc(b);
-    return Math.max(Math.abs(r1 - r2), Math.abs(c1 - c2));
-};
 const label = (sq) => {
     const [r, c] = rc(sq);
     return `${'ABCDEFGH'[c]}${SIZE - r}`;
 };
-const enemy = (color) => (color === 'W' ? 'B' : 'W');
 
 let state;
+let cpuTimer = null;
+let onGameOver = () => {};
+export function setGameOverHandler(fn) { onGameOver = fn; }
+
+const vsCpu = () => settings.quantumMode === 'cpu';
+const cpuToMove = () => vsCpu() && state.pos.turn === CPU_COLOR && !state.over;
 
 export function init() {
-    let id = 1;
-    const pieces = [];
-    for (const [r, c, type] of SETUP) {
-        pieces.push({ id: id++, type, color: 'W', squares: [toSq(r, c)] });
-        pieces.push({ id: id++, type, color: 'B', squares: [toSq(SIZE - 1 - r, c)] });
-    }
+    clearTimeout(cpuTimer);
     state = {
-        pieces,
-        turn: 'W',
-        selected: null,   // piece id
+        pos: startPosition(),
+        selected: null,     // piece id
         pendingFirst: null, // first superposition square for an electron
+        history: [],        // positions before each move, for UNDO
+        moves: 0,
         over: false,
     };
-    clearLog('quantum-log', 'Board ready. Cyan moves first.');
+    clearLog('quantum-log', `Board ready. Cyan moves first${vsCpu() ? '; the CPU plays Rose' : ''}.`);
     resetFacts('quantum', F.intro);
     render();
 }
 
-function occupant(sq) {
-    return state.pieces.find((p) => p.squares.includes(sq)) || null;
-}
+const pieceById = (id) => state.pos.pieces.find((p) => p.id === id);
 
-function legalTargets(piece) {
-    const from = piece.squares[0];
-    const [r, c] = rc(from);
-    const out = [];
-    const tryAdd = (sq) => {
-        const occ = occupant(sq);
-        if (!occ) { out.push(sq); return true; }
-        if (occ.color !== piece.color) out.push(sq);
-        return false;
-    };
-
-    if (piece.type === 'A') {
-        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-            if ((dr || dc) && onBoard(r + dr, c + dc)) tryAdd(toSq(r + dr, c + dc));
+// Turns engine events into log lines, sounds and Lab Notes.
+function narrate(events) {
+    for (const e of events) {
+        const who = e.piece ? `${NAMES[e.piece.color]} ${TYPE_NAMES[e.piece.type]}` : '';
+        if (e.kind === 'collapse') {
+            playSound('quantum');
+            logTo('quantum-log', `${NAMES[e.piece.color]} electron collapsed to ${label(e.piece.squares[0])} (${e.reason}).`);
+            teach('quantum', F[e.reason]);
+            if (e.reason === 'observed') teach('quantum', F.observationNote);
+        } else if (e.kind === 'miss') {
+            logTo('quantum-log', `The electron was never at ${label(e.sq)}!`);
+        } else if (e.kind === 'capture') {
+            playSound('hit');
+            logTo('quantum-log', `${who} captured!`);
+        } else if (e.kind === 'move') {
+            const where = e.squares.map(label).join(' + ');
+            logTo('quantum-log', `${who} -> ${where}${e.squares.length > 1 ? ' (superposition)' : ''}`);
+            if (e.squares.length > 1) teach('quantum', F.superposition);
+            else if (e.piece.type === 'P') teach('quantum', F.photon);
+            else if (e.piece.type === 'A' && !e.captured) teach('quantum', F.atom);
+        } else if (e.kind === 'absorb') {
+            playSound('synth');
+            logTo('quantum-log', `${NAMES[e.atom.color]} Atom absorbed a photon at ${label(e.sq)} and is now excited.`);
+            teach('quantum', F.absorbed);
+        } else if (e.kind === 'emit') {
+            playSound('synth');
+            logTo('quantum-log', `${NAMES[e.atom.color]} Atom re-emitted its photon at ${label(e.sq)}.`);
+            teach('quantum', F.emitted);
         }
-    } else if (piece.type === 'P') {
-        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            let nr = r + dr, nc = c + dc;
-            while (onBoard(nr, nc) && tryAdd(toSq(nr, nc))) { nr += dr; nc += dc; }
-        }
-    } else if (piece.type === 'E') {
-        for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
-            if ((dr || dc) && onBoard(r + dr, c + dc)) tryAdd(toSq(r + dr, c + dc));
-        }
-    }
-    return out;
-}
-
-// Superposed electron picks one of its squares for real.
-function collapse(piece, reason) {
-    if (piece.squares.length < 2) return piece.squares[0];
-    const real = pick(piece.squares);
-    piece.squares = [real];
-    playSound('quantum');
-    logTo('quantum-log', `${NAMES[piece.color]} electron collapsed to ${label(real)} (${reason}).`);
-    teach('quantum', reason === 'observed' ? F.observed : reason === 'attacked' ? F.attacked : F.measured);
-    if (reason === 'observed') teach('quantum', F.observationNote);
-    return real;
-}
-
-// Any superposed electron with a rival piece next to it gets observed.
-function observeAll() {
-    for (const e of state.pieces) {
-        if (e.squares.length < 2) continue;
-        const watched = state.pieces.some((o) => o.color !== e.color
-            && o.squares.some((os) => e.squares.some((es) => dist(os, es) === 1)));
-        if (watched) collapse(e, 'observed');
     }
 }
 
-function capture(piece) {
-    state.pieces = state.pieces.filter((p) => p !== piece);
-    playSound('hit');
-    logTo('quantum-log', `${NAMES[piece.color]} ${TYPE_NAMES[piece.type]} captured!`);
-    if (piece.type === 'A') {
-        state.over = true;
-        const winner = NAMES[enemy(piece.color)];
-        playSound('win');
-        showToast(`${winner} WINS!`);
-        logTo('quantum-log', `${winner} captured the rival Atom. Game over.`);
-    }
-}
-
-function finishMove(mover, squares) {
-    mover.squares = squares;
-    const where = squares.map(label).join(' + ');
-    logTo('quantum-log', `${NAMES[mover.color]} ${TYPE_NAMES[mover.type]} -> ${where}${squares.length > 1 ? ' (superposition)' : ''}`);
-    if (squares.length > 1) teach('quantum', F.superposition);
-    else if (mover.type === 'P') teach('quantum', F.photon);
-    else if (mover.type === 'A') teach('quantum', F.atom);
-    if (state.over) return;
-    observeAll();
+function play(move) {
+    state.history.push(clonePosition(state.pos));
+    const events = applyMove(state.pos, move);
+    state.moves += 1;
     state.selected = null;
     state.pendingFirst = null;
-    state.turn = enemy(state.turn);
+    narrate(events);
+    if (state.pos.winner) return finish();
+    render();
+    if (cpuToMove()) cpuTimer = setTimeout(cpuMove, CPU_DELAY);
 }
 
-function attack(mover, target) {
-    const victim = occupant(target);
-    if (victim && victim.squares.length > 1) {
-        const real = collapse(victim, 'attacked');
-        if (real !== target) {
-            logTo('quantum-log', `The electron was never at ${label(target)}!`);
-            return;
-        }
+function cpuMove() {
+    if (!cpuToMove()) return;
+    const level = byDifficulty({ easy: 0, normal: 1, hard: 2 });
+    let move = chooseMove(state.pos, level);
+    if (!move) return;
+    // Picking up a superposed electron measures it first, then the CPU re-plans.
+    const piece = pieceById(move.id);
+    if (piece.squares.length > 1) {
+        piece.squares = [piece.squares[Math.random() < 0.5 ? 0 : 1]];
+        narrate([{ kind: 'collapse', piece, reason: 'measured' }]);
+        move = chooseMove(state.pos, level);
     }
-    if (victim) capture(victim);
+    play(move);
+}
+
+function finish() {
+    state.over = true;
+    const winner = state.pos.winner;
+    playSound(!vsCpu() || winner === 'W' ? 'win' : 'lose');
+    logTo('quantum-log', `${NAMES[winner]} captured the rival Atom. Game over.`);
+    render();
+    const humanWon = winner === 'W';
+    const survivors = state.pos.pieces.filter((p) => p.color === winner).length;
+    onGameOver({
+        won: vsCpu() ? humanWon : true,
+        title: vsCpu() ? (humanWon ? 'YOU OUT-QUANTUMED THE CPU!' : 'THE CPU WINS') : `${NAMES[winner]} WINS!`,
+        // Only wins against the CPU count for the high score; faster wins score more.
+        score: vsCpu() && humanWon ? Math.max(50, 300 - state.moves * 5 + survivors * 10) : null,
+        stats: [
+            ['WINNER', NAMES[winner]],
+            ['MODE', vsCpu() ? `VS CPU (${settings.difficulty.toUpperCase()})` : '2 PLAYER'],
+            ['TOTAL MOVES', state.moves],
+            ['PIECES LEFT', survivors],
+        ],
+    });
 }
 
 function message() {
-    if (state.over) return 'GAME OVER! PRESS RESET';
-    const who = `${NAMES[state.turn]} TURN`;
+    if (state.over) return 'GAME OVER! PRESS RESET OR UNDO';
+    if (cpuToMove()) return 'ROSE (CPU) IS THINKING...';
+    const who = `${NAMES[state.pos.turn]} TURN`;
     if (state.pendingFirst !== null) return `${who}: PICK A 2ND SQUARE FOR SUPERPOSITION, OR THE SAME SQUARE AGAIN`;
     if (state.selected !== null) return `${who}: PICK A DESTINATION`;
     return `${who}: SELECT A PIECE`;
@@ -155,12 +140,14 @@ function message() {
 function render() {
     const msg = $('quantum-msg');
     msg.textContent = message();
-    msg.className = `font-pixel text-xs mb-3 text-center min-h-[2.5em] ${state.turn === 'W' ? 'text-cyan-300 neon-text-cyan' : 'text-rose-300 neon-text-pink'}`;
+    msg.className = `font-pixel text-xs mb-3 text-center min-h-[2.5em] ${state.pos.turn === 'W' ? 'text-cyan-300 neon-text-cyan' : 'text-rose-300 neon-text-pink'}`;
+    $('quantum-mode-btn').textContent = vsCpu() ? 'MODE: VS CPU' : 'MODE: 2 PLAYER';
+    $('quantum-undo-btn').setAttribute('aria-disabled', state.history.length ? 'false' : 'true');
 
-    const sel = state.pieces.find((p) => p.id === state.selected);
-    let targets = sel ? legalTargets(sel) : [];
+    const sel = state.selected !== null ? pieceById(state.selected) : null;
+    let targets = sel ? legalTargets(state.pos, sel) : [];
     if (state.pendingFirst !== null) {
-        targets = targets.filter((sq) => !occupant(sq)).concat(state.pendingFirst);
+        targets = targets.filter((sq) => !occupant(state.pos, sq)).concat(state.pendingFirst);
     }
 
     const grid = $('quantum-grid');
@@ -170,8 +157,8 @@ function render() {
         const tile = document.createElement('button');
         tile.dataset.action = 'quantum:click';
         tile.dataset.arg = sq;
-        tile.title = label(sq);
-        const piece = occupant(sq);
+        const piece = occupant(state.pos, sq);
+        tile.setAttribute('aria-label', `${label(sq)}${piece ? `, ${NAMES[piece.color]} ${TYPE_NAMES[piece.type]}` : ''}`);
         const classes = ['q-tile', (r + c) % 2 ? 'dark' : 'light'];
         if (sel && sel.squares.includes(sq)) classes.push('selected');
         if (state.pendingFirst === sq) classes.push('pending');
@@ -179,20 +166,22 @@ function render() {
         tile.className = classes.filter(Boolean).join(' ');
         if (piece) {
             const ghost = piece.squares.length > 1;
-            tile.innerHTML = `<span class="${COLOR_CLASS[piece.color]} ${ghost ? 'superposition-pulse' : ''}">${ghost ? piece.type.toLowerCase() : piece.type}</span>`;
+            const glyph = ghost ? piece.type.toLowerCase() : piece.type;
+            tile.innerHTML = `<span class="${COLOR_CLASS[piece.color]} ${ghost ? 'superposition-pulse' : ''}">${glyph}${piece.excited ? '<sup class="text-yellow-300">*</sup>' : ''}</span>`;
         }
         grid.appendChild(tile);
     }
 }
 
 function click(sq) {
-    const sel = state.pieces.find((p) => p.id === state.selected);
-    const occ = occupant(sq);
+    if (cpuToMove()) return;
+    const sel = state.selected !== null ? pieceById(state.selected) : null;
+    const occ = occupant(state.pos, sq);
 
     // Second half of an electron superposition move.
     if (state.pendingFirst !== null) {
         const first = state.pendingFirst;
-        const ok = sq === first || (!occ && legalTargets(sel).includes(sq));
+        const ok = sq === first || (!occ && legalTargets(state.pos, sel).includes(sq));
         if (!ok) {
             state.pendingFirst = null;
             state.selected = null;
@@ -200,39 +189,66 @@ function click(sq) {
             return render();
         }
         playSound('quantum');
-        finishMove(sel, sq === first ? [first] : [first, sq]);
-        return render();
+        return play({ id: sel.id, to: sq === first ? [first] : [first, sq] });
     }
 
-    // Select (or reselect) one of your own pieces.
-    if (occ && occ.color === state.turn) {
-        if (occ.squares.length > 1) collapse(occ, 'measured by its owner');
+    // Select (or reselect) one of your own pieces, unless a photon is being absorbed.
+    const absorbing = sel && sel.type === 'P' && occ && occ.id !== sel.id && legalTargets(state.pos, sel).includes(sq);
+    if (occ && occ.color === state.pos.turn && !absorbing) {
+        if (occ.squares.length > 1) {
+            occ.squares = [occ.squares[Math.random() < 0.5 ? 0 : 1]];
+            narrate([{ kind: 'collapse', piece: occ, reason: 'measured' }]);
+        }
         state.selected = state.selected === occ.id ? null : occ.id;
         playSound('card');
         return render();
     }
 
     if (!sel) return;
-    if (!legalTargets(sel).includes(sq)) {
+    if (!legalTargets(state.pos, sel).includes(sq)) {
         playSound('error');
         return;
     }
-
     if (sel.type === 'E' && !occ) {
         state.pendingFirst = sq;
         playSound('quantum');
         return render();
     }
+    play({ id: sel.id, to: [sq] });
+}
 
-    attack(sel, sq);
-    finishMove(sel, [sq]);
+function undo() {
+    clearTimeout(cpuTimer);
+    if (!state.history.length) {
+        playSound('error');
+        showToast('NOTHING TO UNDO');
+        return;
+    }
+    // Against the CPU, step back to the last position where it was your turn.
+    do {
+        state.pos = state.history.pop();
+        state.moves -= 1;
+    } while (vsCpu() && state.pos.turn === CPU_COLOR && state.history.length);
+    state.selected = null;
+    state.pendingFirst = null;
+    state.over = false;
+    playSound('card');
+    logTo('quantum-log', 'Move taken back.');
     render();
+    if (cpuToMove()) cpuTimer = setTimeout(cpuMove, CPU_DELAY);
 }
 
 export function handle(action, arg) {
     if (action === 'reset') return init();
+    if (action === 'undo') return undo();
+    if (action === 'mode') {
+        settings.quantumMode = vsCpu() ? 'pvp' : 'cpu';
+        saveSettings();
+        showToast(vsCpu() ? 'MODE: VS CPU' : 'MODE: 2 PLAYER');
+        return init();
+    }
     if (state.over) {
-        showToast('GAME OVER! PRESS RESET');
+        showToast('GAME OVER! PRESS RESET OR UNDO');
         return;
     }
     if (action === 'click') click(Number(arg));

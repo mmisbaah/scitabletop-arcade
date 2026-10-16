@@ -282,9 +282,13 @@
             <div class="game-header border-cyan-600">
                 <div>
                     <h2 class="font-pixel text-lg text-cyan-400 neon-text-cyan">QUANTUM LEAP CHESS</h2>
-                    <p class="font-arcade text-lg text-slate-300">Two-player hotseat. Capture the rival Atom to win.</p>
+                    <p class="font-arcade text-lg text-slate-300">Play the CPU or a friend. Capture the rival Atom to win.</p>
                 </div>
                 <div class="flex items-center gap-2">
+                    <button data-action="quantum:mode" id="quantum-mode-btn" class="arcade-btn bg-indigo-800 hover:bg-indigo-700 text-white text-xs"></button>
+                    <button data-action="quantum:undo" id="quantum-undo-btn" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs" title="Undo last move">
+                        <i data-icon="undo-2" class="w-4 h-4 mr-1"></i> UNDO
+                    </button>
                     <button data-action="app:rules" data-arg="quantum" class="arcade-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs">RULES</button>
                     <button data-action="quantum:reset" class="arcade-btn bg-cyan-600 hover:bg-cyan-500 text-white text-xs">RESET</button>
                 </div>
@@ -311,11 +315,11 @@
                             </div>
                             <div class="p-2 bg-slate-900 border border-slate-800">
                                 <span class="font-pixel text-xs text-amber-300">PHOTON (P)</span>
-                                <p class="text-slate-400 text-base leading-none mt-1">Slides in straight lines, like a rook.</p>
+                                <p class="text-slate-400 text-base leading-none mt-1">Slides in straight lines, like a rook. Slide it onto your own Atom to be absorbed.</p>
                             </div>
                             <div class="p-2 bg-slate-900 border border-slate-800">
                                 <span class="font-pixel text-xs text-emerald-300">ATOM (A)</span>
-                                <p class="text-slate-400 text-base leading-none mt-1">Your king. Moves 1 square. Lose it, lose the game.</p>
+                                <p class="text-slate-400 text-base leading-none mt-1">Your king. Moves 1 square. Lose it, lose the game. After absorbing a photon it is EXCITED (*): its next move can reach 2 squares, and it re-emits the photon where it stood.</p>
                             </div>
                         </div>
                     </div>
