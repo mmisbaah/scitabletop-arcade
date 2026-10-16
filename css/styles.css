@@ -417,7 +417,6 @@ main { padding-block: 24px 48px; }
     background: var(--surface); box-shadow: var(--shadow-1); cursor: grab; padding: 0;
     display: grid; place-items: center; touch-action: none; user-select: none;
     transition: transform .18s var(--ease), box-shadow .18s;
-    animation: deal .3s var(--ease) backwards;
 }
 .atom:hover { transform: translateY(-3px); box-shadow: var(--shadow-2); }
 .atom::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; border-radius: 12px 12px 0 0; background: var(--el); }
@@ -754,3 +753,174 @@ body.age-young .critter { font-size: 2.5rem; }
 .piece.B { box-shadow: inset 0 -4px 0 rgb(0 0 0 / 18%), 0 0 14px color-mix(in srgb, var(--p2) 55%, transparent); }
 
 .kid-mode .hud { grid-template-columns: minmax(0, 1fr); }
+
+/* ===================================================================
+   Science Island (world map) and motion effects
+   =================================================================== */
+
+:root {
+    --sea: #2f8fd8; --sea-light: #6cc4f2; --shallow: #9fdcf6; --sand: #f1d9a0;
+    --grass-light: #9bd96a; --grass-deep: #5fae4a; --rock: #8b7a6a; --wall: #f4efe6; --wall-dark: #e2d9ca;
+    --roof: #7a4f3a; --dome: #dfe6f2; --tent: #ff8f5a; --tent-dark: #d9653a; --trunk: #8a5a3b;
+    --leaf: #3f9d4a; --leaf-dark: #2f7f3b; --leaf-light: #5fbf5c; --trail: #e8c98a; --cloud: rgb(255 255 255 / 92%);
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --sea: #0f2a52; --sea-light: #1e4f86; --shallow: #2a5f8e; --sand: #b9a172;
+        --grass-light: #3c7a4a; --grass-deep: #23533a; --rock: #4c4450; --wall: #c9c3d6; --wall-dark: #a69fb6;
+        --roof: #4f3a3a; --dome: #9aa6c4; --tent: #c56a45; --tent-dark: #9b4f33; --trunk: #5a3d2c;
+        --leaf: #2c6b3a; --leaf-dark: #1f5230; --leaf-light: #3e8a4a; --trail: #a68e5e; --cloud: rgb(200 210 240 / 35%);
+    }
+}
+:root[data-theme="dark"] {
+    --sea: #0f2a52; --sea-light: #1e4f86; --shallow: #2a5f8e; --sand: #b9a172;
+    --grass-light: #3c7a4a; --grass-deep: #23533a; --rock: #4c4450; --wall: #c9c3d6; --wall-dark: #a69fb6;
+    --roof: #4f3a3a; --dome: #9aa6c4; --tent: #c56a45; --tent-dark: #9b4f33; --trunk: #5a3d2c;
+    --leaf: #2c6b3a; --leaf-dark: #1f5230; --leaf-light: #3e8a4a; --trail: #a68e5e; --cloud: rgb(200 210 240 / 35%);
+}
+
+.world-wrap { container-type: inline-size; }
+.world {
+    position: relative; width: 100%; aspect-ratio: 5 / 3; border-radius: var(--r-lg); overflow: hidden;
+    border: 1px solid var(--line); box-shadow: var(--shadow-2); background: var(--sea);
+}
+.world-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.world .trail { fill: none; stroke: var(--trail); stroke-width: 9; stroke-linecap: round; stroke-dasharray: 2 16; }
+.world .wave { fill: none; stroke: rgb(255 255 255 / 45%); stroke-width: 2.5; stroke-linecap: round; animation: waveDrift 5s ease-in-out infinite alternate; }
+@keyframes waveDrift { from { transform: translateX(-14px); opacity: .2; } to { transform: translateX(14px); opacity: .9; } }
+.world .tree { animation: sway 4s ease-in-out infinite alternate; }
+@keyframes sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+.world .smoke { fill: rgb(220 215 210 / 80%); animation: smoke 3.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.world .smoke.s2 { animation-delay: -1.2s; } .world .smoke.s3 { animation-delay: -2.4s; }
+@keyframes smoke { from { transform: translate(0, 0) scale(.5); opacity: .9; } to { transform: translate(26px, -70px) scale(2.2); opacity: 0; } }
+.world .glow-window { animation: glow 2.2s ease-in-out infinite alternate; }
+@keyframes glow { from { opacity: .6; } to { opacity: 1; filter: drop-shadow(0 0 6px var(--chem)); } }
+.world .bubble-up { animation: bubbleUp 2s ease-in infinite; }
+@keyframes bubbleUp { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-26px); opacity: 0; } }
+.world .flag { animation: flagWave .9s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: left center; }
+.world .flag.f2 { animation-delay: -.45s; }
+@keyframes flagWave { from { transform: skewY(-8deg) scaleX(.9); } to { transform: skewY(6deg) scaleX(1.05); } }
+.world .beat { animation: beat 1.1s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.25); } 30% { transform: scale(1); } 45% { transform: scale(1.15); } }
+.world .scope { animation: scope 6s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: bottom center; }
+@keyframes scope { from { transform: rotate(-35deg); } to { transform: rotate(25deg); } }
+.world .twinkle { animation: twinkle 2.4s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: .15; } 50% { opacity: 1; } }
+.world .fire { animation: flicker .35s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: bottom center; }
+.world .fire.f2 { animation-duration: .27s; }
+@keyframes flicker { from { transform: scaleY(.85) skewX(-4deg); } to { transform: scaleY(1.12) skewX(4deg); } }
+.world .fire-glow { animation: glow 1s ease-in-out infinite alternate; }
+.world .boat { animation: sail 38s linear infinite; }
+@keyframes sail { from { transform: translate(-80px, 572px); } 50% { transform: translate(540px, 582px); } to { transform: translate(1080px, 572px); } }
+.world .bird { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; opacity: .55; animation: fly 26s linear infinite; }
+.world .bird.b2 { animation-duration: 32s; animation-delay: -12s; }
+@keyframes fly { from { transform: translate(-40px, 60px); } 50% { transform: translate(520px, 30px); } to { transform: translate(1060px, 80px); } }
+.world .cloud {
+    position: absolute; width: 16%; aspect-ratio: 3 / 1; border-radius: 999px; background: var(--cloud); filter: blur(.5px);
+    box-shadow: 2.4cqw -1.2cqw 0 0.2cqw var(--cloud), 5cqw 0.3cqw 0 -0.2cqw var(--cloud);
+    animation: cloud 60s linear infinite; pointer-events: none;
+}
+.world .cloud.c1 { top: 4%; animation-delay: -8s; }
+.world .cloud.c2 { top: 16%; width: 12%; animation-duration: 80s; animation-delay: -40s; }
+.world .cloud.c3 { top: 74%; width: 13%; animation-duration: 70s; animation-delay: -22s; opacity: .7; }
+@keyframes cloud { from { left: -20%; } to { left: 110%; } }
+
+.loc-pin {
+    position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 2px;
+    background: none; border: 0; padding: 0; cursor: pointer; z-index: 3; color: var(--ink);
+}
+.pin-icon {
+    width: clamp(30px, 6cqw, 52px); height: clamp(30px, 6cqw, 52px); border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    display: grid; place-items: center; background: var(--surface); border: 3px solid var(--pin); box-shadow: var(--shadow-2);
+    font-size: clamp(14px, 2.8cqw, 26px); transition: transform .25s var(--ease);
+}
+.pin-icon > span { transform: rotate(45deg); }
+.loc-pin .pin-icon { line-height: 1; }
+.loc-pin:hover .pin-icon, .loc-pin.is-here .pin-icon { transform: rotate(-45deg) scale(1.15); }
+.loc-pin.is-here .pin-icon { background: var(--pin); }
+.pin-label {
+    display: grid; justify-items: center; padding: 3px 9px; border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-1);
+    font-size: clamp(9px, 1.5cqw, 13px); line-height: 1.2; white-space: nowrap; margin-top: 4px;
+}
+.pin-label small { color: #e3a400; letter-spacing: 1px; }
+@container (max-width: 520px) { .pin-label small { display: none; } }
+.loc-pin { animation: pinBob 2.6s ease-in-out infinite; }
+.loc-pin:nth-of-type(2n) { animation-delay: -1.3s; }
+@keyframes pinBob { 50% { transform: translate(-50%, calc(-100% - 5px)); } }
+
+.walker { position: absolute; transform: translate(-50%, -12%); z-index: 4; pointer-events: none; display: grid; justify-items: center; }
+.walker-body { font-size: clamp(22px, 4.6cqw, 42px); line-height: 1; display: block; filter: drop-shadow(0 3px 2px rgb(0 0 0 / 30%)); }
+.walker.face-left .walker-body { transform: scaleX(-1); }
+.walker-shadow { width: 60%; height: 6px; border-radius: 50%; background: rgb(0 0 0 / 25%); margin-top: -2px; }
+.walker.walking .walker-body { animation: step .32s ease-in-out infinite alternate; }
+.walker.walking.face-left .walker-body { animation-name: stepLeft; }
+@keyframes step { from { transform: translateY(0) rotate(-5deg); } to { transform: translateY(-6px) rotate(5deg); } }
+@keyframes stepLeft { from { transform: scaleX(-1) translateY(0) rotate(-5deg); } to { transform: scaleX(-1) translateY(-6px) rotate(5deg); } }
+
+.loc-card {
+    display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: 18px; align-items: center;
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 16px; box-shadow: var(--shadow-1);
+}
+.loc-card .loc-art { height: 120px; border-radius: var(--r-md); }
+.loc-card h3 { font-size: 1.5rem; font-weight: 800; }
+.loc-info { display: grid; gap: 6px; min-width: 0; }
+.loc-actions { display: grid; gap: 8px; }
+.loc-empty { display: flex; gap: 12px; align-items: center; grid-column: 1 / -1; padding: 6px; }
+.loc-empty .icon { width: 28px; height: 28px; color: var(--accent); }
+.loc-card.is-walking { opacity: .6; }
+@media (max-width: 760px) {
+    .loc-card { grid-template-columns: minmax(0, 1fr); }
+    .loc-card .loc-art { height: 110px; }
+    .loc-actions { grid-template-columns: 1fr 1fr; }
+}
+
+/* Circle-wipe screen transition */
+.wipe { position: fixed; inset: 0; z-index: 150; pointer-events: none; }
+
+/* Effects layer */
+.fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 115; }
+.fx-ghost { pointer-events: none; z-index: 1; }
+.fx-sprite { position: fixed; z-index: 3; line-height: 1; filter: drop-shadow(0 4px 4px rgb(0 0 0 / 25%)); }
+.fx-particle { position: fixed; border-radius: 3px; z-index: 2; line-height: 1; }
+.fx-ripple { position: fixed; width: 60px; height: 60px; border-radius: 50%; border: 4px solid; }
+.fx-flash { position: fixed; inset: 0; }
+
+/* Things that now animate via FLIP shouldn't also replay a CSS entrance on every render. */
+.pathogen, .piece, .organism { animation: none; }
+.pathogen .germ { animation: wiggle 1.2s ease-in-out infinite alternate; }
+.piece.ghost { animation: wobble 1.4s ease-in-out infinite; }
+
+/* Molecule assembly: atoms fly in from scattered spots, then bonds draw. */
+.molecule.assemble .atom-g { animation: assemble .7s cubic-bezier(.2,.9,.3,1.3) backwards; transform-box: fill-box; transform-origin: center; }
+.molecule.assemble .bond-line { stroke-dasharray: 100; animation: drawBond .45s ease-out .55s backwards; }
+@keyframes assemble { from { transform: translate(var(--dx), var(--dy)) scale(.4) rotate(-90deg); opacity: 0; } }
+@keyframes drawBond { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+
+/* Ecosystem scene: JS moves the animals; CSS adds a little bounce and the weather. */
+.critter { animation: none !important; transition: none; }
+.critter .body { display: inline-block; }
+.critter.graze .body, .critter.prowl .body { animation: trot .5s ease-in-out infinite alternate; }
+.critter.sky .body { animation: flap .6s ease-in-out infinite alternate; }
+.critter.left .body { scale: -1 1; }
+.critter.eating .body { animation: munch .25s ease-in-out infinite alternate; }
+@keyframes trot { from { translate: 0 0; } to { translate: 0 -5px; } }
+@keyframes flap { from { translate: 0 0; rotate: -6deg; } to { translate: 0 -8px; rotate: 6deg; } }
+@keyframes munch { from { rotate: 0deg; } to { rotate: 14deg; } }
+.critter .say { position: absolute; top: -26px; left: 50%; transform: translateX(-50%); font-size: .8rem; font-weight: 800; font-style: normal; color: #1b2030; background: #fff; border-radius: 8px; padding: 1px 6px; white-space: nowrap; box-shadow: var(--shadow-1); }
+.weather-fx { position: absolute; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+.weather-fx i { position: absolute; top: -10%; font-style: normal; animation: fall linear infinite; }
+.weather-fx.rain i { width: 2px; height: 14px; background: rgb(255 255 255 / 70%); border-radius: 2px; }
+.weather-fx.butterflies i { animation: flutter 7s ease-in-out infinite alternate; top: auto; }
+@keyframes fall { to { transform: translate(-30px, 300px) rotate(240deg); } }
+@keyframes flutter { from { transform: translate(0, 0); } 50% { transform: translate(40px, -30px); } to { transform: translate(-20px, 10px); } }
+
+.atom-chip { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--el); color: #fff; font-family: var(--display); font-weight: 800; font-size: 16px; border: 2px solid rgb(0 0 0 / 20%); text-shadow: 0 1px 2px rgb(0 0 0 / 40%); }
+
+.antibody { display: inline-block; font-family: var(--display); font-weight: 800; color: var(--qtm); text-shadow: 0 0 8px color-mix(in srgb, var(--qtm) 60%, transparent); }
+
+/* Phones: the island comes first, full width, with the welcome and profile below it. */
+@media (max-width: 760px) {
+    #screen-hub .world-wrap { order: -2; margin-inline: -8px; }
+    #screen-hub .loc-card { order: -1; }
+    .world .cloud { opacity: .7; }
+}

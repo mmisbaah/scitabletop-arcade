@@ -4,12 +4,14 @@
 import { $, showToast, refreshIcons, icon } from './core/ui.js';
 import { playSound, setAudio } from './core/audio.js';
 import { settings, saveSettings, getBest } from './core/storage.js';
-import { showEnd, hideEnd, lastGame } from './core/endscreen.js';
+import { showEnd, hideEnd, lastGame, recordQuietly } from './core/endscreen.js';
 import { ACHIEVEMENTS, isUnlocked, levelOf, levelProgress, totalXp, starsFor, journalSize } from './core/progress.js';
 import { CARTRIDGES, RULES, KID_CARTRIDGES, KID_RULES } from './data/rules.js';
 import { AGES, ageGroup, isYoung, setAge } from './core/age.js';
 import { mascotSVG } from './core/art.js';
 import { speak, canSpeak } from './core/speech.js';
+import { reduced } from './core/anim.js';
+import { PLACES, renderWorld, walkTo, walkerAt, placeWalker } from './world/world.js';
 import * as chemistry from './games/chemistry.js';
 import * as ecosystem from './games/ecosystem.js';
 import * as immune from './games/immune.js';
@@ -24,7 +26,8 @@ for (const [key, game] of Object.entries(GAMES)) {
     game.setGameOverHandler((result) => {
         // Let the final move land before the results cover the board.
         setTimeout(() => {
-            showEnd(key, result);
+            if (current === key) showEnd(key, result);
+            else recordQuietly(key, result);
             renderLevel();
         }, 700);
     });
@@ -33,7 +36,7 @@ for (const [key, game] of Object.entries(GAMES)) {
 // ---------- navigation ----------
 
 function renderTabs() {
-    const items = [{ key: 'hub', label: 'Home', short: 'Home', icon: 'house' },
+    const items = [{ key: 'hub', label: 'Map', short: 'Map', icon: 'map' },
         ...CARTRIDGES.map((c) => ({ key: c.key, label: c.tab, short: c.tab, icon: c.icon }))];
     const html = (compact) => items.map((t) => `
         <button class="tab" data-action="app:go" data-arg="${t.key}" ${t.key === current ? 'aria-current="page"' : ''}
@@ -51,6 +54,7 @@ function go(key, { push = true } = {}) {
     hideEnd();
     document.querySelectorAll('.screen').forEach((el) => { el.hidden = el.id !== `screen-${target}`; });
     renderTabs();
+    if (GAMES[target]) placeWalker(target);
     if (target === 'hub') renderHub();
     if (GAMES[target] && !started.has(target)) {
         GAMES[target].init();
@@ -103,6 +107,65 @@ function cardArt(kind) {
     return `<div class="art-board" aria-hidden="true">${cells}</div>`;
 }
 
+const GAME_COLORS = { chemistry: 'var(--chem)', ecosystem: 'var(--eco)', immune: 'var(--imm)', quantum: 'var(--qtm)' };
+
+function placeInfo(key) {
+    const c = CARTRIDGES.find((x) => x.key === key);
+    const kid = isYoung() ? KID_CARTRIDGES[key] : null;
+    return {
+        place: PLACES[key].name, color: GAME_COLORS[key], stars: starsFor(key),
+        title: kid?.title ?? c.title, blurb: kid?.blurb ?? c.blurb, subject: c.subject, mode: c.mode, theme: c.theme, art: c.art,
+    };
+}
+
+// The card under the map: where you are and what you can play there.
+function renderLocCard(key) {
+    const card = $('loc-card');
+    if (!PLACES[key]?.name) {
+        card.className = 'loc-card';
+        card.innerHTML = `<div class="loc-empty">${icon('map-pin')}<div><b>You're at base camp.</b><span class="muted"> Tap a place on the island to walk there.</span></div></div>`;
+        refreshIcons(card);
+        return;
+    }
+    const i = placeInfo(key);
+    const best = getBest(key);
+    card.className = `loc-card ${i.theme}`;
+    card.innerHTML = `
+        <div class="loc-art game-art">${cardArt(i.art)}</div>
+        <div class="loc-info">
+            <div class="eyebrow" style="color:var(--game)">${PLACES[key].icon} ${i.place} · ${i.subject}</div>
+            <h3>${i.title}</h3>
+            <p class="muted">${i.blurb}</p>
+            <div class="game-meta">
+                ${starRow(i.stars)}
+                <span class="chip">${best === null ? 'Not played yet' : `Best ${best}`}</span>
+                <span class="chip game">${journalSize(key)} facts found</span>
+            </div>
+        </div>
+        <div class="loc-actions">
+            <button class="btn btn-primary" data-action="app:enter" data-arg="${key}">${icon('play')}Enter ${i.place.split(' ')[1] ?? ''}</button>
+            <button class="btn" data-action="app:rules" data-arg="${key}">${icon('circle-help')}How to play</button>
+        </div>`;
+    refreshIcons(card);
+    if (!reduced()) card.animate([{ transform: 'translateY(10px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 320, easing: 'ease-out' });
+}
+
+// Circle wipe in the location's colour, then switch screens underneath it.
+function enterWithWipe(key, from) {
+    const wipe = $('wipe');
+    if (reduced()) { go(key); return; }
+    const r = from?.getBoundingClientRect();
+    const x = r ? r.left + r.width / 2 : innerWidth / 2, y = r ? r.top + r.height / 2 : innerHeight / 2;
+    wipe.style.background = GAME_COLORS[key];
+    wipe.hidden = false;
+    playSound('quantum');
+    wipe.animate([{ clipPath: `circle(0px at ${x}px ${y}px)` }, { clipPath: `circle(150vmax at ${x}px ${y}px)` }], { duration: 480, easing: 'ease-in', fill: 'forwards' })
+        .onfinish = () => {
+            go(key);
+            wipe.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 380, easing: 'ease-out', fill: 'forwards' }).onfinish = () => { wipe.hidden = true; wipe.getAnimations().forEach((a) => a.cancel()); };
+        };
+}
+
 const starRow = (n) => `<span class="stars" aria-label="${n} of 3 stars">${[1, 2, 3].map((i) => icon('star', `icon${i <= n ? ' on' : ''}`)).join('')}</span>`;
 
 function renderHub() {
@@ -120,28 +183,11 @@ function renderHub() {
             <div><span class="eyebrow">Facts</span><b class="num">${journalSize()}</b></div>
         </div>`;
 
-    $('hub-difficulty-note').textContent = isYoung()
-        ? 'Explorer mode: do your best to earn 3 stars!'
-        : `Playing on ${settings.difficulty}. Win on Hard for 3 stars.`;
-    $('hub-cards').innerHTML = CARTRIDGES.map((g) => {
-        const best = getBest(g.key);
-        const kid = isYoung() ? KID_CARTRIDGES[g.key] : null;
-        return `
-        <button class="game-card ${g.theme}" data-action="app:go" data-arg="${g.key}">
-            <div class="game-art">${cardArt(g.art)}</div>
-            <div class="game-info">
-                <div class="eyebrow" style="color:var(--game)">${g.subject} · ${g.mode}</div>
-                <h3>${kid?.title ?? g.title}</h3>
-                <p>${kid?.blurb ?? g.blurb}</p>
-                <div class="game-meta">
-                    ${starRow(starsFor(g.key))}
-                    <span class="chip">${best === null ? 'Not played yet' : `Best ${best}`}</span>
-                    <span class="chip game">${journalSize(g.key)} facts</span>
-                </div>
-            </div>
-        </button>`;
-    }).join('');
-
+    renderWorld($('world-wrap'), {
+        info: placeInfo,
+        avatar: AGES[ageGroup()].emoji,
+    });
+    renderLocCard(walkerAt());
     $('hub-ach-count').textContent = `${unlocked} of ${ACHIEVEMENTS.length}`;
     $('hub-achievements').innerHTML = ACHIEVEMENTS.map((a) => `
         <div class="achievement ${isUnlocked(a.id) ? 'on' : ''}">
@@ -265,6 +311,15 @@ function applySettings() {
 }
 
 const APP_ACTIONS = {
+    visit: async (key) => {
+        playSound('card');
+        if (walkerAt() === key) return renderLocCard(key);
+        $('loc-card').classList.add('is-walking');
+        await walkTo(key);
+        playSound('synth');
+        renderLocCard(key);
+    },
+    enter: (key) => enterWithWipe(key, document.querySelector(`.loc-pin[data-arg="${key}"]`)),
     age: showAgePicker,
     'pick-age': pickAge,
     read: (game) => {

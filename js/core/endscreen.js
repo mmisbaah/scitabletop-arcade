@@ -92,3 +92,9 @@ export function hideEnd() {
 }
 
 export const lastGame = () => replayGame;
+
+// When the player has already left the game, still count the result.
+export function recordQuietly(game, result) {
+    if (typeof result.score === 'number' && result.won) recordScore(game, result.score);
+    recordResult(game, result);
+}

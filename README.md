@@ -1,6 +1,6 @@
 # SciTabletop
 
-Four science strategy games in one app. Plain HTML, CSS and JavaScript modules. No framework, no bundler.
+Four science strategy games on Science Island, an animated world map you walk around. Plain HTML, CSS and JavaScript modules. No framework, no bundler.
 
 | Game | Science | Mode |
 |---|---|---|
@@ -42,11 +42,14 @@ js/
     progress.js             XP, levels, stars, achievements, fact journal
     age.js                  age groups and kid-friendly wording
     art.js                  molecule models, cartoon germs, the mascot (inline SVG)
+    anim.js                 motion toolkit: FLIP moves, flying sprites, bursts, ripples, screen shake
     confetti.js             win celebration
     speech.js               read-aloud
     difficulty.js           Easy/Normal/Hard lookup
     facts.js                Lab Notes and the "what you learned" list
     endscreen.js            results screen
+  world/
+    world.js                Science Island map, locations and the walking character
   data/
     rules.js                hub cards and rules text
     chemistry-data.js       recipes, valence, atom facts, deck

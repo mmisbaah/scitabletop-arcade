@@ -8,6 +8,7 @@ import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
 import { isYoung, byAge, say } from '../core/age.js';
 import { germSVG } from '../core/art.js';
+import { flip, sprite, burst, shakeScreen, flash } from '../core/anim.js';
 import { PATHOGENS, WAVES as ALL_WAVES, ABILITIES, BREACH_FACT, MEMORY_FACTS, IMMUNE_KID, AGE_TUNING, IMMUNE_CONFIG as CFG } from '../data/pathogens.js';
 
 let T = {};
@@ -78,13 +79,18 @@ function render() {
     `).join('');
 
     const armed = state.armed && ABILITIES[state.armed];
+    // Germs slide between lanes; beaten ones linger a moment so the helper cell can reach them.
+    flip($('immune-tracks'), () => renderLanes(armed), { selector: '.pathogen', exitDelay: 320, duration: 520 });
+}
+
+function renderLanes(armed) {
     for (let z = 0; z < 3; z++) {
         const lane = $(`immune-zone-${z}`);
         lane.classList.toggle('targetable', armed?.target === 'zone' && state.zones[z].length > 0);
         lane.innerHTML = state.zones[z].map((p) => {
             const targetable = armed && (armed.target === 'pathogen' || (armed.target === 'virus' && p.kind === 'virus'));
             return `
-            <button class="pathogen ${p.kind} ${targetable ? 'targetable' : ''}" data-action="immune:target" data-arg="${p.id}"
+            <button class="pathogen ${p.kind} ${targetable ? 'targetable' : ''}" data-key="${p.id}" data-action="immune:target" data-arg="${p.id}"
                 aria-label="${nice(p.name)}, ${p.kind}, ${p.hp} HP${p.remembered ? ', remembered' : ''}">
                 <span class="germ-wrap">${germSVG(p.kind, 40)}</span>
                 <span class="kind">${p.kind}</span>
@@ -202,6 +208,9 @@ const actions = {
             return;
         }
         const { z, p } = hit;
+        const used = state.armed;
+        const origin = document.querySelector(`#immune-abilities [data-arg="${used}"]`)?.getBoundingClientRect();
+        const target = el?.getBoundingClientRect();
         if (state.armed === 'tcell') {
             if (p.kind !== 'virus') {
                 playSound('error');
@@ -217,12 +226,21 @@ const actions = {
             if (tagged) teach('immune', say(MEMORY_FACTS.tagged, 'Your body remembered this germ, so the Gobbler gets an extra big bite!'));
             damage(z, p, (p.kind === 'bacteria' ? 2 : 1) + tagged, 'macrophage');
         }
+        const killed = !findPathogen(id);
+        sprite(GLYPHS[used], origin, target, { duration: 340, size: 36 }).then(() => {
+            burst(target, killed ? { count: 16, emoji: used === 'tcell' ? ['⚡', '✨'] : ['💥', '✨'], size: 9, spread: 60 } : { count: 8, spread: 36 });
+        });
         checkVictory();
         render();
     },
 
     zone(z) {
         if (state.armed !== 'bcell' || state.zones[z].length === 0) return;
+        const origin = document.querySelector('#immune-abilities [data-arg="bcell"]')?.getBoundingClientRect();
+        $(`immune-zone-${z}`).querySelectorAll('.pathogen').forEach((g, k) => {
+            const r = g.getBoundingClientRect();
+            setTimeout(() => sprite('<b class="antibody">Y</b>', origin, r, { duration: 360, size: 30 }).then(() => burst(r, { count: 8, spread: 34 })), k * 70);
+        });
         spend('bcell');
         logTo('immune-log', `Antibodies flood zone ${z + 1}.`);
         for (const p of [...state.zones[z]]) damage(z, p, 1, 'bcell');
@@ -236,6 +254,11 @@ const actions = {
         // Organ core breaches.
         const breach = state.zones[2].reduce((t, p) => t + p.hp * (T.breach ?? byDifficulty(CFG.breachDamagePerHp)), 0);
         if (breach) {
+            // Breaching germs dive into the organ.
+            const heart = document.querySelector('#immune-zone-2')?.closest('.track')?.querySelector('.track-label')?.getBoundingClientRect();
+            $('immune-zone-2').querySelectorAll('.pathogen').forEach((g) => sprite(germSVG(g.classList.contains('virus') ? 'virus' : 'bacteria', 36), g.getBoundingClientRect(), heart, { duration: 420, arc: -20 }));
+            setTimeout(() => { flash(); shakeScreen(); burst(heart, { emoji: '💔', count: 6, size: 10, spread: 50 }); }, 380);
+            state.zones[2] = [];
             state.health = Math.max(0, state.health - breach);
             playSound('lose');
             shake($('immune-zone-2'));

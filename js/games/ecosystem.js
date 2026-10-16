@@ -5,13 +5,14 @@ import { $, showToast, logTo as rawLog, clearLog, setMeter, pick } from '../core
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
-import { isYoung, byAge, say } from '../core/age.js';
+import { isYoung, byAge, say as sayFor } from '../core/age.js';
+import { ghost, reduced, burst } from '../core/anim.js';
 import { SPECIES, DRAW_WEIGHTS, EVENTS, ECO_FACTS, ECO_KID, SEASON_NAMES, AGE_TUNING, ECO_CONFIG as CFG } from '../data/species.js';
 
 const FULL_POOL = Object.entries(DRAW_WEIGHTS).flatMap(([name, n]) => Array(n).fill(name));
 let DRAW_POOL = FULL_POOL;
 let T = {}; // age tuning for the current game
-const ecoFact = (key) => say(ECO_FACTS[key], ECO_KID[key]);
+const ecoFact = (key) => sayFor(ECO_FACTS[key], ECO_KID[key]);
 const TIERS = ['producer', 'herbivore', 'predator'];
 const TIER_STYLE = {
     producer: 'border-emerald-700 text-emerald-300',
@@ -66,6 +67,10 @@ function energyReport() {
 }
 
 export function init() {
+    pos.clear();
+    builtSeason = null;
+    const sc = document.getElementById('eco-scene');
+    if (sc) { sc.dataset.built = ''; }
     T = byAge(AGE_TUNING);
     document.getElementById('screen-ecosystem').classList.toggle('kid-mode', isYoung());
     DRAW_POOL = T.noKudzu ? FULL_POOL.filter((n) => !SPECIES[n].invasive) : FULL_POOL;
@@ -145,35 +150,153 @@ function render() {
     }).join('') || '<span class="empty">No reserve species. One arrives each season.</span>';
 }
 
-// A picture of the habitat: sky and ground change with the season, plants sit
-// on the ground, grazers wander, hunters prowl and birds circle overhead.
+// A living picture of the habitat. The skeleton (sky, ground, weather) is built
+// once; animals are keyed so they keep walking between renders. A small
+// animation loop moves them: grazers wander to plants to eat, hunters stalk
+// grazers, birds circle. New arrivals walk in from the edge; animals that
+// starve or are removed fade out where they stand.
 const FLYERS = new Set(['OWL', 'HAWK']);
+const WEATHER = {
+    Spring: { cls: 'rain', n: 26, glyph: '' },
+    Summer: { cls: 'butterflies', n: 5, glyph: '🦋' },
+    Autumn: { cls: 'leaves', n: 14, glyph: '🍂' },
+    Winter: { cls: 'snow', n: 22, glyph: '❄' },
+};
+const pos = new Map();      // key -> { x, tx, wait, speed }
+let builtSeason = null;
+let rafId = null;
+let lastT = 0;
+
+const rowOf = (name) => (SPECIES[name].tier === 'producer' ? 'plant' : SPECIES[name].tier === 'herbivore' ? 'graze' : FLYERS.has(name) ? 'sky' : 'prowl');
+
+function keyedList() {
+    const seen = {};
+    return [...state.board.producer, ...state.board.herbivore, ...state.board.predator].map((name) => {
+        seen[name] = (seen[name] ?? 0) + 1;
+        return { name, key: `${name}#${seen[name]}`, row: rowOf(name) };
+    });
+}
+
+function buildWeather(season) {
+    const w = WEATHER[season];
+    return `<div class="weather-fx ${w.cls}">${Array.from({ length: w.n }, (_, i) => {
+        const left = (i * 37) % 100, dur = 3 + ((i * 7) % 5), delay = -((i * 13) % 50) / 10;
+        const style = w.cls === 'butterflies' ? `left:${10 + (i * 19) % 80}%;bottom:${20 + (i * 11) % 40}%;animation-delay:${delay}s` : `left:${left}%;animation-duration:${w.cls === 'rain' ? 0.9 + (i % 4) * 0.15 : dur}s;animation-delay:${delay}s`;
+        return `<i style="${style}">${w.glyph}</i>`;
+    }).join('')}</div>`;
+}
 
 function renderScene(e) {
     const scene = $('eco-scene');
     const season = SEASON_NAMES[(state.season - 1) % 4];
+    if (!scene.dataset.built) {
+        scene.innerHTML = '<div class="sky-body"></div><div class="season-tag"></div><div class="ground"></div><div class="critters"></div><div class="weather-slot"></div><div class="weather"></div>';
+        scene.dataset.built = '1';
+    }
     scene.className = `scene season-${season.toLowerCase()}`;
+    scene.querySelector('.sky-body').textContent = season === 'Winter' ? '❄️' : season === 'Autumn' ? '🍂' : '☀️';
+    scene.querySelector('.season-tag').textContent = `${season} · season ${Math.min(state.season, state.seasons)} of ${state.seasons}`;
+    const weather = scene.querySelector('.weather');
+    weather.textContent = state.drought ? '🔥 Drought' : '';
+    weather.hidden = !state.drought;
+    if (builtSeason !== season) {
+        scene.querySelector('.weather-slot').innerHTML = buildWeather(season);
+        builtSeason = season;
+    }
+
     const herbHungry = e.herbNeed > 0 && e.herbFood < e.herbNeed;
     const predHungry = e.predNeed > 0 && e.predFood < e.predNeed;
-    const place = (name, i, n, row, hungry) => {
-        const left = n === 1 ? 50 : 8 + (i * 84) / Math.max(1, n - 1);
-        const delay = ((i * 0.37) % 1.6).toFixed(2);
-        return `<span class="critter ${row} ${SPECIES[name].invasive ? 'vine' : ''}" style="left:${left}%;animation-delay:-${delay}s" title="${cap(name)}">
-            ${SPECIES[name].icon}${hungry ? '<i class="mood">😟</i>' : ''}</span>`;
-    };
-    const plants = state.board.producer;
-    const grazers = state.board.herbivore;
-    const birds = state.board.predator.filter((n) => FLYERS.has(n));
-    const hunters = state.board.predator.filter((n) => !FLYERS.has(n));
-    scene.innerHTML = `
-        <div class="sky-body">${season === 'Winter' ? '❄️' : season === 'Autumn' ? '🍂' : '☀️'}</div>
-        <div class="season-tag">${season} · season ${Math.min(state.season, state.seasons)} of ${state.seasons}</div>
-        ${birds.map((n, i) => place(n, i, birds.length, 'sky', predHungry)).join('')}
-        <div class="ground"></div>
-        ${hunters.map((n, i) => place(n, i, hunters.length, 'prowl', predHungry)).join('')}
-        ${grazers.map((n, i) => place(n, i, grazers.length, 'graze', herbHungry)).join('')}
-        ${plants.map((n, i) => place(n, i, plants.length, 'plant', false)).join('')}
-        ${state.drought ? '<div class="weather">🔥 Drought</div>' : ''}`;
+    const box = scene.querySelector('.critters');
+    const want = keyedList();
+    const wanted = new Set(want.map((c) => c.key));
+
+    // Animals and plants that are gone: fade out where they stand.
+    box.querySelectorAll('.critter').forEach((el) => {
+        if (wanted.has(el.dataset.key)) return;
+        const g = ghost(el);
+        g?.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(10px) rotate(90deg) scale(.6)' }], { duration: 700, easing: 'ease-in', fill: 'forwards' }).finished.then(() => g.remove());
+        pos.delete(el.dataset.key);
+        el.remove();
+    });
+
+    // Plants spread evenly along the ground; everyone else keeps their spot.
+    const plants = want.filter((c) => c.row === 'plant');
+    want.forEach((c) => {
+        let el = box.querySelector(`[data-key="${CSS.escape(c.key)}"]`);
+        if (c.row === 'plant') {
+            const i = plants.indexOf(c);
+            const x = plants.length === 1 ? 50 : 6 + (i * 88) / (plants.length - 1);
+            pos.set(c.key, { x, tx: x, wait: 0 });
+        }
+        if (!el) {
+            const enterFrom = c.row === 'plant' ? null : Math.random() < 0.5 ? -6 : 106;
+            if (!pos.has(c.key)) pos.set(c.key, { x: enterFrom, tx: 15 + Math.random() * 70, wait: 0 });
+            el = document.createElement('span');
+            el.className = `critter ${c.row} ${SPECIES[c.name].invasive ? 'vine' : ''}`;
+            el.dataset.key = c.key;
+            el.title = cap(c.name);
+            el.innerHTML = `<span class="body">${SPECIES[c.name].icon}</span>`;
+            el.style.left = `${pos.get(c.key).x}%`;
+            box.appendChild(el);
+            if (c.row === 'plant' && !reduced()) {
+                el.animate([{ transform: 'translateX(-50%) scale(0)', transformOrigin: 'bottom' }, { transform: 'translateX(-50%) scale(1.2)', offset: 0.7 }, { transform: 'translateX(-50%) scale(1)' }], { duration: 650, easing: 'ease-out' });
+            }
+        }
+        if (c.row === 'plant') el.style.left = `${pos.get(c.key).x}%`;
+        const hungry = (c.row === 'graze' && herbHungry) || ((c.row === 'prowl' || c.row === 'sky') && predHungry);
+        let mood = el.querySelector('.mood');
+        if (hungry && !mood) { mood = document.createElement('i'); mood.className = 'mood'; mood.textContent = '😟'; el.appendChild(mood); }
+        if (!hungry && mood) mood.remove();
+        el.classList.toggle('hungry', hungry);
+    });
+
+    if (!rafId) { lastT = performance.now(); rafId = requestAnimationFrame(tick); }
+}
+
+function say(el, text) {
+    const b = document.createElement('i');
+    b.className = 'say';
+    b.textContent = text;
+    el.appendChild(b);
+    setTimeout(() => b.remove(), 900);
+}
+
+function tick(t) {
+    const scene = $('eco-scene');
+    if (!scene || !scene.offsetParent || reduced()) { rafId = null; return; }
+    const dt = Math.min(60, t - lastT);
+    lastT = t;
+    const plantXs = [...scene.querySelectorAll('.critter.plant:not(.vine)')].map((p) => pos.get(p.dataset.key)?.x).filter((x) => x != null);
+    const grazerXs = [...scene.querySelectorAll('.critter.graze')].map((g) => pos.get(g.dataset.key)?.x).filter((x) => x != null);
+
+    scene.querySelectorAll('.critter.graze, .critter.prowl, .critter.sky').forEach((el) => {
+        const p = pos.get(el.dataset.key);
+        if (!p) return;
+        if (p.wait > 0) { p.wait -= dt; if (p.wait <= 0) el.classList.remove('eating'); return; }
+        const row = el.classList.contains('graze') ? 'graze' : el.classList.contains('prowl') ? 'prowl' : 'sky';
+        const speed = { graze: 0.006, prowl: 0.009, sky: 0.013 }[row] * (el.classList.contains('hungry') ? 0.6 : 1);
+        if (Math.abs(p.tx - p.x) < 0.4) {
+            // Arrived: eat, pause, then pick somewhere new.
+            if (row === 'graze' && p.goingToEat) { el.classList.add('eating'); p.wait = 1400; if (Math.random() < 0.35) say(el, 'nom!'); }
+            else p.wait = 400 + Math.random() * 1600;
+            p.goingToEat = false;
+            if (row === 'graze' && plantXs.length && Math.random() < 0.6) {
+                p.tx = plantXs[Math.floor(Math.random() * plantXs.length)] + (Math.random() - 0.5) * 6;
+                p.goingToEat = true;
+            } else if (row === 'prowl' && grazerXs.length && Math.random() < 0.7) {
+                p.tx = grazerXs[Math.floor(Math.random() * grazerXs.length)] - 6;
+            } else {
+                p.tx = 6 + Math.random() * 88;
+            }
+            p.tx = Math.max(4, Math.min(96, p.tx));
+            return;
+        }
+        const dir = Math.sign(p.tx - p.x);
+        p.x += dir * Math.min(speed * dt, Math.abs(p.tx - p.x));
+        el.style.left = `${p.x}%`;
+        el.classList.toggle('left', dir < 0);
+    });
+    rafId = requestAnimationFrame(tick);
 }
 
 function spendPlay() {
@@ -341,7 +464,7 @@ const actions = {
         if (!spendPlay()) return;
         state.hand.splice(i, 1);
         playSound('card');
-        teach('ecosystem', say(SPECIES[name].fact, SPECIES[name].kid));
+        teach('ecosystem', sayFor(SPECIES[name].fact, SPECIES[name].kid));
         if (isKudzu(name)) {
             logTo('eco-log', 'You burned an invasive Kudzu seed.');
             showToast('Kudzu seed burned');
@@ -374,7 +497,7 @@ const actions = {
         if (Math.random() < (T.invasion ?? byDifficulty({ easy: 0.06, normal: 0.12, hard: 0.2 }))) {
             state.board.producer.push('KUDZU');
             logTo('eco-log', 'Wild Kudzu invaded from a neighbouring field!');
-            teach('ecosystem', say(SPECIES.KUDZU.fact, SPECIES.KUDZU.kid));
+            teach('ecosystem', sayFor(SPECIES.KUDZU.fact, SPECIES.KUDZU.kid));
         }
 
         const { delta, notes } = simulateSeason();

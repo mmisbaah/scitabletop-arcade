@@ -42,15 +42,15 @@
         <div class="hero">
             <div>
                 <div class="hero-mascot" id="hero-mascot"></div>
-                <div class="eyebrow">Four games · one lab</div>
+                <div class="eyebrow">Welcome to Science Island</div>
                 <h1 id="hero-title">Learn science by <em>outplaying</em> it.</h1>
                 <p id="hero-text">Balance molecules, keep a food web alive, hold off an infection and outwit a quantum opponent. Every move comes with the real science behind it.</p>
             </div>
             <div class="profile" id="hub-profile"></div>
         </div>
 
-        <div class="panel-head"><h2 style="font-size:1.4rem">Games</h2><span class="muted" id="hub-difficulty-note"></span></div>
-        <div class="game-grid" id="hub-cards"></div>
+        <div class="world-wrap" id="world-wrap"></div>
+        <div class="loc-card" id="loc-card" aria-live="polite"></div>
 
         <div class="panel-head"><h2 style="font-size:1.4rem">Achievements</h2><span class="chip" id="hub-ach-count"></span></div>
         <div class="achievement-list" id="hub-achievements"></div>
@@ -65,6 +65,7 @@
                 <p>Build molecules from atom tiles. First to 150 points wins, and the first to make each molecule earns +10.</p>
             </div>
             <div class="actions">
+                <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="map" class="icon"></i>Map</button>
                 <button class="btn" data-action="app:rules" data-arg="chemistry"><i data-icon="circle-help" class="icon"></i>How to play</button>
                 <button class="btn" data-action="chemistry:reset"><i data-icon="rotate-ccw" class="icon"></i>Restart</button>
             </div>
@@ -139,6 +140,7 @@
                 <p>Energy flows up the food web and only about 10% survives each step. Keep every level fed for 10 seasons.</p>
             </div>
             <div class="actions">
+                <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="map" class="icon"></i>Map</button>
                 <button class="btn" data-action="app:rules" data-arg="ecosystem"><i data-icon="circle-help" class="icon"></i>How to play</button>
                 <button class="btn" data-action="ecosystem:reset"><i data-icon="rotate-ccw" class="icon"></i>Restart</button>
             </div>
@@ -213,6 +215,7 @@
                 <p>Pathogens march toward the organ. Spend action points on immune cells and survive 5 waves.</p>
             </div>
             <div class="actions">
+                <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="map" class="icon"></i>Map</button>
                 <button class="btn" data-action="app:rules" data-arg="immune"><i data-icon="circle-help" class="icon"></i>How to play</button>
                 <button class="btn" data-action="immune:reset"><i data-icon="rotate-ccw" class="icon"></i>Restart</button>
             </div>
@@ -236,7 +239,7 @@
         <div class="layout">
             <div class="panel">
                 <div class="panel-head"><h3>Infection route</h3><span class="muted adv" style="font-size:.85rem">Pick a cell, then tap a target</span><span class="chip game kid-only">Tap a germ to zap it!</span></div>
-                <div class="tracks">
+                <div class="tracks" id="immune-tracks">
                     <div class="track">
                         <div class="track-label"><b>Bloodstream</b><small>Wave enters here</small></div>
                         <div class="lane" id="immune-zone-0" data-zone="0"></div>
@@ -282,6 +285,7 @@
                 <button class="btn" data-action="quantum:mode" id="quantum-mode-btn"></button>
                 <button class="btn btn-soft" data-action="quantum:hint"><i data-icon="lightbulb" class="icon"></i>Hint</button>
                 <button class="btn" data-action="quantum:undo" id="quantum-undo-btn"><i data-icon="undo-2" class="icon"></i>Undo</button>
+                <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="map" class="icon"></i>Map</button>
                 <button class="btn" data-action="app:rules" data-arg="quantum"><i data-icon="circle-help" class="icon"></i>How to play</button>
                 <button class="btn" data-action="quantum:reset"><i data-icon="rotate-ccw" class="icon"></i>Restart</button>
             </div>
@@ -318,6 +322,8 @@
         </div>
     </section>
 </main>
+
+<div class="wipe" id="wipe" hidden></div>
 
 <nav class="bottom-nav" aria-label="Games" id="bottom-tabs"></nav>
 

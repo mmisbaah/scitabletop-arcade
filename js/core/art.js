@@ -19,7 +19,7 @@ const MODELS = {
 const RADIUS = { H: 0.3, C: 0.42, N: 0.42, O: 0.42, Na: 0.52, Cl: 0.5 };
 const DARK_TEXT = new Set(['H', 'Cl']);
 
-export function moleculeSVG(formula, { size = 120, labels = true, ghost = false } = {}) {
+export function moleculeSVG(formula, { size = 120, labels = true, ghost = false, animate = false } = {}) {
     const m = MODELS[formula];
     if (!m) return '';
     const U = 40; // pixels per bond length
@@ -37,15 +37,18 @@ export function moleculeSVG(formula, { size = 120, labels = true, ghost = false 
         const nx = (-dy / len) * 6, ny = (dx / len) * 6;
         for (let k = 0; k < order; k++) {
             const off = (k - (order - 1) / 2);
-            svg += `<line x1="${px(x1) + nx * off}" y1="${py(y1) + ny * off}" x2="${px(x2) + nx * off}" y2="${py(y2) + ny * off}" stroke="var(--ink-3)" stroke-width="4" stroke-linecap="round"/>`;
+            svg += `<line class="bond-line" pathLength="100" x1="${px(x1) + nx * off}" y1="${py(y1) + ny * off}" x2="${px(x2) + nx * off}" y2="${py(y2) + ny * off}" stroke="var(--ink-3)" stroke-width="4" stroke-linecap="round"/>`;
         }
     }
     for (const [a, b] of m.ionic ?? []) {
         const [, x1, y1] = m.atoms[a], [, x2, y2] = m.atoms[b];
-        svg += `<line x1="${px(x1)}" y1="${py(y1)}" x2="${px(x2)}" y2="${py(y2)}" stroke="var(--ink-3)" stroke-width="3" stroke-dasharray="3 6" stroke-linecap="round"/>`;
+        svg += `<line x1="${px(x1)}" y1="${py(y1)}" x2="${px(x2)}" y2="${py(y2)}" stroke="var(--ink-3)" stroke-width="3" stroke-dasharray="3 6" stroke-linecap="round" opacity="${animate ? 0 : 1}">${animate ? '<animate attributeName="opacity" from="0" to="1" begin="0.6s" dur="0.3s" fill="freeze"/>' : ''}</line>`;
     }
-    for (const [el, x, y, charge] of m.atoms) {
+    for (const [i, [el, x, y, charge]] of m.atoms.entries()) {
         const r = RADIUS[el] * U;
+        // Each atom flies in from its own direction when the model assembles.
+        const a = (i / m.atoms.length) * Math.PI * 2 + 0.6;
+        svg += `<g class="atom-g" style="--dx:${Math.round(Math.cos(a) * 70)}px;--dy:${Math.round(Math.sin(a) * 50)}px;animation-delay:${i * 0.06}s">`;
         const fill = ghost ? 'transparent' : `var(--el-${el})`;
         const stroke = ghost ? 'var(--ink-3)' : 'rgb(0 0 0 / 22%)';
         svg += `<circle cx="${px(x)}" cy="${py(y)}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="${ghost ? 2 : 1.5}" ${ghost ? 'stroke-dasharray="4 4"' : ''}/>`;
@@ -57,9 +60,10 @@ export function moleculeSVG(formula, { size = 120, labels = true, ghost = false 
         if (charge && !ghost) {
             svg += `<text x="${px(x) + r * 0.85}" y="${py(y) - r * 0.6}" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="16" fill="var(--ink)">${charge}</text>`;
         }
+        svg += '</g>';
     }
     const scale = Math.min(2.2, size / Math.max(w, h));
-    return `<svg class="molecule" viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" role="img" aria-label="Model of ${formula}">${svg}</svg>`;
+    return `<svg class="molecule${animate ? ' assemble' : ''}" viewBox="0 0 ${w} ${h}" width="${w * scale}" height="${h * scale}" role="img" aria-label="Model of ${formula}">${svg}</svg>`;
 }
 
 // Cartoon germs with faces. Viruses are spiky balls, bacteria are capsules with tails.

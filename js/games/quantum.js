@@ -8,6 +8,7 @@ import { byDifficulty } from '../core/difficulty.js';
 import { settings, saveSettings } from '../core/storage.js';
 import { QUANTUM_FACTS, QUANTUM_KID } from '../data/quantum-data.js';
 import { isYoung, say } from '../core/age.js';
+import { flip, burst, ripple } from '../core/anim.js';
 
 // Facts in the right words for the player's age group.
 const F = new Proxy({}, { get: (_, key) => say(QUANTUM_FACTS[key], QUANTUM_KID[key]) });
@@ -53,8 +54,14 @@ export function init() {
 const pieceById = (id) => state.pos.pieces.find((p) => p.id === id);
 
 // Turns engine events into log lines, sounds and Lab Notes.
+const tileRect = (sq) => $('quantum-grid')?.children[sq]?.getBoundingClientRect();
+
 function narrate(events) {
     for (const e of events) {
+        if (e.kind === 'collapse') setTimeout(() => ripple(tileRect(e.piece.squares[0])), 380);
+        if (e.kind === 'capture') burst(tileRect(e.piece.squares[0]), { count: 18, spread: 70, colors: [e.piece.color === 'W' ? 'var(--p1)' : 'var(--p2)', '#f5b301', '#ffffff'] });
+        if (e.kind === 'absorb') burst(tileRect(e.sq), { emoji: ['✨', '💛'], count: 10, size: 8, spread: 50 });
+        if (e.kind === 'emit') setTimeout(() => burst(tileRect(e.sq), { emoji: '✨', count: 10, size: 8, spread: 60 }), 300);
         const who = e.piece ? `${NAMES[e.piece.color]} ${TYPE_NAMES[e.piece.type]}` : '';
         if (e.kind === 'collapse') {
             playSound('quantum');
@@ -162,6 +169,11 @@ function render() {
     }
 
     const grid = $('quantum-grid');
+    // Pieces slide to their new squares; a newly split electron grows out of its other half.
+    flip(grid, () => drawGrid(grid, sel, targets), { selector: '.piece', fallback: (k) => k.replace(/-1$/, '-0'), duration: 420 });
+}
+
+function drawGrid(grid, sel, targets) {
     grid.innerHTML = '';
     for (let sq = 0; sq < SIZE * SIZE; sq++) {
         const [r, c] = rc(sq);
@@ -183,7 +195,7 @@ function render() {
         let html = c === 0 || r === SIZE - 1 ? `<span class="coord">${label(sq)}</span>` : '';
         if (piece) {
             const ghost = piece.squares.length > 1;
-            html += `<span class="piece ${piece.color} ${ghost ? 'ghost' : ''}">${piece.type}${piece.excited ? '<span class="excited"></span>' : ''}</span>`;
+            html += `<span class="piece ${piece.color} ${ghost ? 'ghost' : ''}" data-key="${piece.id}-${piece.squares.indexOf(sq)}">${piece.type}${piece.excited ? '<span class="excited"></span>' : ''}</span>`;
         }
         tile.innerHTML = html;
         grid.appendChild(tile);

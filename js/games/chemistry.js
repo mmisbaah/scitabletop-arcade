@@ -8,6 +8,14 @@ import { byDifficulty } from '../core/difficulty.js';
 import { isYoung, byAge, say } from '../core/age.js';
 import { moleculeSVG } from '../core/art.js';
 import { confetti } from '../core/confetti.js';
+import { flyFrom, sprite, burst } from '../core/anim.js';
+
+// Effects that need the freshly rendered DOM run right after the next render.
+const fx = [];
+const afterRender = (fn) => fx.push(fn);
+const runFx = () => { while (fx.length) fx.shift()(); };
+const tileRect = (id, i) => $(id)?.querySelectorAll('.atom')[i]?.getBoundingClientRect();
+const lastTiles = (id, n = 1) => [...($(id)?.querySelectorAll('.atom') ?? [])].slice(-n);
 import {
     RECIPES as ALL_RECIPES, VALENCE, ATOM_FACTS, ATOM_WEIGHTS, ATOMIC_NUMBER,
     WIN_SCORE as FULL_WIN, HAND_LIMIT, START_HAND, MARKET_SIZE, DISCOVERY_BONUS, DISCOVERY_FACT,
@@ -151,6 +159,7 @@ function render() {
     $('chem-hand').innerHTML = state.hand
         .map((a, i) => atomCard(a, 'bench', i, state.trading ? 'is-trade' : ''))
         .join('') || `<span class="empty">No atoms left. Draw or take from the market.</span>`;
+    runFx();
 }
 
 function score(who, recipe) {
@@ -191,17 +200,23 @@ function checkWinner() {
 // Big picture of the molecule you just built, shown on the bench for a moment.
 function showBuilt(formula) {
     const pop = $('chem-built');
-    pop.innerHTML = `${moleculeSVG(formula, { size: 200 })}<b>${KID_RECIPES[formula]?.emoji ?? ''} ${isYoung() ? KID_RECIPES[formula].name : formula}</b>`;
+    pop.innerHTML = `${moleculeSVG(formula, { size: 200, animate: true })}<b>${KID_RECIPES[formula]?.emoji ?? ''} ${isYoung() ? KID_RECIPES[formula].name : formula}</b>`;
     pop.hidden = false;
     pop.classList.remove('pop-in');
     void pop.offsetWidth;
     pop.classList.add('pop-in');
+    setTimeout(() => burst(pop.getBoundingClientRect(), { count: 18, spread: 120, colors: ['var(--game)', '#f5b301', '#7090ff'] }), 650);
     clearTimeout(showBuilt.t);
     showBuilt.t = setTimeout(() => { pop.hidden = true; }, isYoung() ? 2600 : 1600);
 }
 
-function takeFromMarket(hand, i) {
+function takeFromMarket(hand, i, mine = false) {
     const atom = state.market[i];
+    if (!mine) {
+        const from = tileRect('chem-market', i);
+        const to = $('chem-cpu')?.getBoundingClientRect();
+        afterRender(() => setTimeout(() => sprite(`<span class="atom-chip" style="--el:var(--el-${atom})">${atom}</span>`, from, to, { duration: 650 }), 350));
+    }
     hand.push(atom);
     state.market[i] = drawAtom();
     return atom;
@@ -224,6 +239,7 @@ function cpuAct() {
         const r = buildable[0];
         state.cpuHand = removeAtoms(state.cpuHand, r.atoms);
         const { pts, first } = score('CPU', r);
+        afterRender(() => setTimeout(() => burst($('chem-cpu')?.getBoundingClientRect(), { count: 12, spread: 50 }), 300));
         logTo('chem-log', `CPU synthesized ${r.formula} (+${pts}${first ? ', first discovery' : ''}).`);
         return;
     }
@@ -276,6 +292,7 @@ function tradeCard(i) {
     const old = state.hand[i];
     const fresh = drawAtom();
     state.hand[i] = fresh;
+    afterRender(() => $('chem-hand').querySelectorAll('.atom')[i]?.animate([{ transform: 'rotateY(90deg)' }, { transform: 'none' }], { duration: 420, easing: 'ease-out' }));
     state.trading = false;
     playSound('card');
     logTo('chem-log', `You traded ${old} for ${fresh}.`);
@@ -296,6 +313,8 @@ const actions = {
 
     bench(i) {
         if (state.trading) return tradeCard(i);
+        const from = tileRect('chem-hand', i);
+        afterRender(() => flyFrom(from, lastTiles('chem-bench-slots')[0]));
         const atom = state.hand.splice(i, 1)[0];
         state.bench.push(atom);
         teach('chemistry', ATOM_FACTS[atom]);
@@ -305,6 +324,8 @@ const actions = {
 
     unbench(i) {
         if (state.kid) return;
+        const from = tileRect('chem-bench-slots', i);
+        afterRender(() => flyFrom(from, lastTiles('chem-hand')[0]));
         state.hand.push(state.bench.splice(i, 1)[0]);
         playSound('card');
         render();
@@ -319,7 +340,12 @@ const actions = {
     take(i) {
         if (handFull()) return;
         state.trading = false;
-        const atom = takeFromMarket(state.hand, i);
+        const from = tileRect('chem-market', i);
+        afterRender(() => {
+            flyFrom(from, lastTiles('chem-hand')[0], { duration: 520, arc: -70 });
+            $('chem-market').querySelectorAll('.atom')[i]?.animate([{ transform: 'translateY(-30px) scale(.5)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 400, delay: 200, easing: 'ease-out', fill: 'backwards' });
+        });
+        const atom = takeFromMarket(state.hand, i, true);
         state.picks += 1;
         playSound('card');
         teach('chemistry', ATOM_FACTS[atom]);
@@ -354,6 +380,8 @@ const actions = {
         if (handFull()) return;
         state.trading = false;
         const drawn = drawMany(Math.min(2, roomInHand()));
+        const deck = document.querySelector('[data-action="chemistry:draw"]')?.getBoundingClientRect();
+        afterRender(() => lastTiles('chem-hand', drawn.length).forEach((el, k) => setTimeout(() => flyFrom(deck, el, { duration: 480 }), k * 120)));
         state.hand.push(...drawn);
         playSound('card');
         logTo('chem-log', `You drew ${drawn.join(', ')}.`);
@@ -418,6 +446,7 @@ function renderKid() {
     $('chem-hand').innerHTML = state.hand.map((a, i) => atomCard(a, 'bench', i)).join('');
     $('chem-p1').textContent = state.made;
     setMeter('chem-p1-bar', null, (state.made / state.targets.length) * 100);
+    runFx();
 }
 
 function kidPick(i) {
@@ -433,6 +462,8 @@ function kidPick(i) {
         teach('chemistry', KID_ATOMS[atom]);
         return;
     }
+    const from = tileRect('chem-hand', i);
+    afterRender(() => flyFrom(from, lastTiles('chem-bench-slots')[0], { duration: 480, arc: -50 }));
     state.hand.splice(i, 1);
     state.bench.push(atom);
     playSound('card');
