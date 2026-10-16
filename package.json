@@ -6,8 +6,8 @@
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --minify",
     "watch:css": "tailwindcss -c tailwind.config.js -i css/tailwind.src.css -o css/tailwind.css --watch",
-    "vendor": "mkdir -p vendor && cp node_modules/lucide/dist/umd/lucide.min.js vendor/lucide.min.js",
-    "build": "npm run build:css && npm run vendor",
+    "build:icons": "node scripts/build-icons.mjs",
+    "build": "npm run build:css",
     "serve": "python3 -m http.server 8000"
   },
   "devDependencies": {

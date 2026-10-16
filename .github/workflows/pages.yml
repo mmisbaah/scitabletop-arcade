@@ -31,7 +31,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir -p _site
-          cp -r index.html .nojekyll css js vendor _site/
+          cp -r index.html .nojekyll css js _site/
           rm -f _site/css/tailwind.src.css
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

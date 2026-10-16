@@ -1,7 +1,8 @@
 // App shell: screen routing, global toggles, and click delegation to each game.
 
 import { $, showToast, refreshIcons } from './core/ui.js';
-import { playSound, toggleAudio } from './core/audio.js';
+import { playSound, setAudio } from './core/audio.js';
+import { settings, saveSettings } from './core/storage.js';
 import { CARTRIDGES, RULES } from './data/rules.js';
 import * as chemistry from './games/chemistry.js';
 import * as ecosystem from './games/ecosystem.js';
@@ -17,7 +18,7 @@ function renderHub() {
             <div>
                 <div class="flex items-center justify-between mb-3 border-b-2 ${g.style.rule} pb-2">
                     <span class="font-pixel text-xs ${g.style.code} flex items-center gap-1">
-                        <i data-lucide="${g.icon}" class="w-4 h-4"></i> ${g.code}
+                        <i data-icon="${g.icon}" class="w-4 h-4"></i> ${g.code}
                     </span>
                     <span class="font-pixel text-[10px] ${g.style.tag} px-2 py-0.5 border">${g.tag}</span>
                 </div>
@@ -63,16 +64,25 @@ const APP_ACTIONS = {
     rules: showRules,
     'close-rules': closeRules,
     audio: () => {
-        const on = toggleAudio();
-        $('audio-toggle').innerHTML = `<i data-lucide="${on ? 'volume-2' : 'volume-x'}" class="w-4 h-4"></i>`;
-        refreshIcons();
-        showToast(on ? '8-BIT AUDIO ON' : 'AUDIO MUTED');
+        settings.audio = !settings.audio;
+        saveSettings();
+        applySettings();
+        showToast(settings.audio ? '8-BIT AUDIO ON' : 'AUDIO MUTED');
     },
     crt: () => {
-        const off = $('crt-layer').classList.toggle('off');
-        showToast(off ? 'CRT FILTER OFF' : 'CRT FILTER ON');
+        settings.crt = !settings.crt;
+        saveSettings();
+        applySettings();
+        showToast(settings.crt ? 'CRT FILTER ON' : 'CRT FILTER OFF');
     },
 };
+
+function applySettings() {
+    setAudio(settings.audio);
+    $('audio-toggle').innerHTML = `<i data-icon="${settings.audio ? 'volume-2' : 'volume-x'}" class="w-4 h-4"></i>`;
+    $('crt-layer').classList.toggle('off', !settings.crt);
+    refreshIcons();
+}
 
 document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
@@ -83,7 +93,6 @@ document.addEventListener('click', (e) => {
         if (e.target.id === 'rules-modal') closeRules();
         return;
     }
-    if (el.getAttribute('aria-disabled') === 'true' && !el.dataset.action.startsWith('immune:arm')) return;
     const [scope, action] = el.dataset.action.split(':');
     const arg = el.dataset.arg;
     if (scope === 'app') APP_ACTIONS[action]?.(arg);
@@ -96,6 +105,7 @@ document.addEventListener('keydown', (e) => {
 
 window.addEventListener('hashchange', () => go(location.hash.slice(1), { push: false }));
 
+applySettings();
 renderHub();
 refreshIcons();
 go(location.hash.slice(1), { push: false });

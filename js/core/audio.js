@@ -38,11 +38,6 @@ export function playSound(name) {
     }
 }
 
-export function toggleAudio() {
-    enabled = !enabled;
-    return enabled;
-}
-
-export function isAudioEnabled() {
-    return enabled;
+export function setAudio(on) {
+    enabled = on;
 }

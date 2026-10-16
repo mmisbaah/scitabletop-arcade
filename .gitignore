@@ -1,2 +1,4 @@
 node_modules/
 .DS_Store
+# Built by `npm run build` locally and by the Pages workflow
+css/tailwind.css

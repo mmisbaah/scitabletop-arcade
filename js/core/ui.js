@@ -1,5 +1,7 @@
 // Shared DOM helpers used by every game module.
 
+import { ICONS } from './icons.js';
+
 export const $ = (id) => document.getElementById(id);
 
 let toastTimer = null;
@@ -41,17 +43,16 @@ export function shake(el) {
     el.classList.add('shake');
 }
 
-export function refreshIcons() {
-    window.lucide?.createIcons();
+// Fills every <i data-icon="name"> with its inline SVG.
+export function refreshIcons(root = document) {
+    root.querySelectorAll('[data-icon]').forEach((el) => {
+        const svg = ICONS[el.dataset.icon];
+        if (!svg || el.dataset.drawn === el.dataset.icon) return;
+        el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${svg}</svg>`;
+        el.dataset.drawn = el.dataset.icon;
+        el.classList.add('inline-block');
+    });
 }
 
 export const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-export function shuffle(arr) {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-}
