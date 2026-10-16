@@ -1,11 +1,11 @@
-// App shell: screen routing, global settings, end screen, and click delegation
-// to each game.
+// App shell: navigation, settings (theme, sound, difficulty), the hub with
+// progression, the results screen, and click delegation to each game.
 
-import { $, showToast, refreshIcons } from './core/ui.js';
+import { $, showToast, refreshIcons, icon } from './core/ui.js';
 import { playSound, setAudio } from './core/audio.js';
 import { settings, saveSettings, getBest } from './core/storage.js';
-import { DIFFICULTIES } from './core/difficulty.js';
 import { showEnd, hideEnd, lastGame } from './core/endscreen.js';
+import { ACHIEVEMENTS, isUnlocked, levelOf, levelProgress, totalXp, starsFor, journalSize } from './core/progress.js';
 import { CARTRIDGES, RULES } from './data/rules.js';
 import * as chemistry from './games/chemistry.js';
 import * as ecosystem from './games/ecosystem.js';
@@ -13,46 +13,41 @@ import * as immune from './games/immune.js';
 import * as quantum from './games/quantum.js';
 
 const GAMES = { chemistry, ecosystem, immune, quantum };
+const TAB_COLORS = { chemistry: 'var(--chem)', ecosystem: 'var(--eco)', immune: 'var(--imm)', quantum: 'var(--qtm)' };
 const started = new Set();
+let current = 'hub';
 
 for (const [key, game] of Object.entries(GAMES)) {
     game.setGameOverHandler((result) => {
-        // Let the final move render before the results cover the board.
-        setTimeout(() => showEnd(key, result), 700);
+        // Let the final move land before the results cover the board.
+        setTimeout(() => {
+            showEnd(key, result);
+            renderLevel();
+        }, 700);
     });
 }
 
-function renderHub() {
-    $('hub-cards').innerHTML = CARTRIDGES.map((g) => {
-        const best = getBest(g.key);
-        return `
-        <div class="pixel-card p-5 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center justify-between mb-3 border-b-2 ${g.style.rule} pb-2">
-                    <span class="font-pixel text-xs ${g.style.code} flex items-center gap-1">
-                        <i data-icon="${g.icon}" class="w-4 h-4"></i> ${g.code}
-                    </span>
-                    <span class="font-pixel text-[10px] ${g.style.tag} px-2 py-0.5 border">${g.tag}</span>
-                </div>
-                <h3 class="font-pixel text-lg ${g.style.title} mb-2">${g.title}</h3>
-                <p class="font-arcade text-lg text-slate-300 mb-3">${g.blurb}</p>
-                <p class="font-pixel text-[10px] text-yellow-300 mb-4 flex items-center gap-1">
-                    <i data-icon="trophy" class="w-3 h-3"></i> BEST: ${best ?? 'NOT PLAYED YET'}
-                </p>
-            </div>
-            <button data-action="app:go" data-arg="${g.key}" class="arcade-btn ${g.style.btn} text-black w-full">
-                PLAY CARTRIDGE &gt;
-            </button>
-        </div>`;
-    }).join('');
-    refreshIcons($('hub-cards'));
+// ---------- navigation ----------
+
+function renderTabs() {
+    const items = [{ key: 'hub', label: 'Home', short: 'Home', icon: 'house' },
+        ...CARTRIDGES.map((c) => ({ key: c.key, label: c.tab, short: c.tab, icon: c.icon }))];
+    const html = (compact) => items.map((t) => `
+        <button class="tab" data-action="app:go" data-arg="${t.key}" ${t.key === current ? 'aria-current="page"' : ''}
+            style="--tab-color:${TAB_COLORS[t.key] ?? 'var(--ink-2)'}">
+            ${compact ? icon(t.icon) : t.key === 'hub' ? '' : '<span class="dot"></span>'}${compact ? t.short : t.label}
+        </button>`).join('');
+    $('top-tabs').innerHTML = html(false);
+    $('bottom-tabs').innerHTML = html(true);
+    refreshIcons($('bottom-tabs'));
 }
 
 function go(key, { push = true } = {}) {
     const target = GAMES[key] ? key : 'hub';
+    current = target;
     hideEnd();
-    document.querySelectorAll('.screen').forEach((el) => el.classList.add('hidden'));
-    $(`screen-${target}`).classList.remove('hidden');
+    document.querySelectorAll('.screen').forEach((el) => { el.hidden = el.id !== `screen-${target}`; });
+    renderTabs();
     if (target === 'hub') renderHub();
     if (GAMES[target] && !started.has(target)) {
         GAMES[target].init();
@@ -69,26 +64,135 @@ function go(key, { push = true } = {}) {
     }
 }
 
+// ---------- hub ----------
+
+function cardArt(kind) {
+    if (kind === 'molecule') {
+        // Water: the H-O-H angle really is 104.5 degrees.
+        return `<div class="art-molecule" aria-hidden="true">
+            <i class="bond" style="left:75px;top:41px;width:50px;transform:rotate(142.25deg)"></i>
+            <i class="bond" style="left:75px;top:41px;width:50px;transform:rotate(37.75deg)"></i>
+            <i class="atom-ball" style="left:49px;top:19px;width:52px;height:52px;background:var(--el-O)"></i>
+            <i class="atom-ball" style="left:19px;top:57px;width:34px;height:34px;background:var(--el-H);border:1px solid var(--line)"></i>
+            <i class="atom-ball" style="left:97px;top:57px;width:34px;height:34px;background:var(--el-H);border:1px solid var(--line)"></i>
+            <span class="mono" style="position:absolute;left:58px;top:84px;font-size:.7rem;color:var(--ink-2)">104.5°</span>
+        </div>`;
+    }
+    if (kind === 'pyramid') {
+        return `<div class="art-pyramid" aria-hidden="true">
+            <span>predators · 1%</span><div style="width:max(8px,1%)"></div>
+            <span>herbivores · 10%</span><div style="width:10%"></div>
+            <span>plants · 100%</span><div style="width:100%"></div>
+        </div>`;
+    }
+    if (kind === 'antibody') {
+        return `<div class="art-antibody" aria-hidden="true">
+            <i style="left:53px;top:48px;height:56px"></i>
+            <i style="left:34px;top:6px;height:52px;transform:rotate(-35deg)"></i>
+            <i style="left:72px;top:6px;height:52px;transform:rotate(35deg)"></i>
+        </div>`;
+    }
+    const cells = Array.from({ length: 25 }, (_, i) => {
+        if (i === 7) return '<span><b></b></span>';
+        if (i === 11 || i === 13) return '<span><b class="ghost"></b></span>';
+        return '<span></span>';
+    }).join('');
+    return `<div class="art-board" aria-hidden="true">${cells}</div>`;
+}
+
+const starRow = (n) => `<span class="stars" aria-label="${n} of 3 stars">${[1, 2, 3].map((i) => icon('star', `icon${i <= n ? ' on' : ''}`)).join('')}</span>`;
+
+function renderHub() {
+    const unlocked = ACHIEVEMENTS.filter((a) => isUnlocked(a.id)).length;
+    const stars = CARTRIDGES.reduce((t, c) => t + starsFor(c.key), 0);
+    $('hub-profile').innerHTML = `
+        <div class="profile-top">
+            <span class="level-ring profile-level" style="--p:${Math.round(levelProgress() * 100)}">${levelOf()}</span>
+            <div><div class="eyebrow">Your lab level</div><b style="font-size:1.15rem">Level ${levelOf()} scientist</b>
+            <div class="muted num" style="font-size:.85rem">${totalXp()} XP total</div></div>
+        </div>
+        <div class="profile-stats">
+            <div><span class="eyebrow">Stars</span><b class="num">${stars}/12</b></div>
+            <div><span class="eyebrow">Badges</span><b class="num">${unlocked}/${ACHIEVEMENTS.length}</b></div>
+            <div><span class="eyebrow">Facts</span><b class="num">${journalSize()}</b></div>
+        </div>`;
+
+    $('hub-difficulty-note').textContent = `Playing on ${settings.difficulty}. Win on Hard for 3 stars.`;
+    $('hub-cards').innerHTML = CARTRIDGES.map((g) => {
+        const best = getBest(g.key);
+        return `
+        <button class="game-card ${g.theme}" data-action="app:go" data-arg="${g.key}">
+            <div class="game-art">${cardArt(g.art)}</div>
+            <div class="game-info">
+                <div class="eyebrow" style="color:var(--game)">${g.subject} · ${g.mode}</div>
+                <h3>${g.title}</h3>
+                <p>${g.blurb}</p>
+                <div class="game-meta">
+                    ${starRow(starsFor(g.key))}
+                    <span class="chip">${best === null ? 'Not played yet' : `Best ${best}`}</span>
+                    <span class="chip game">${journalSize(g.key)} facts</span>
+                </div>
+            </div>
+        </button>`;
+    }).join('');
+
+    $('hub-ach-count').textContent = `${unlocked} of ${ACHIEVEMENTS.length}`;
+    $('hub-achievements').innerHTML = ACHIEVEMENTS.map((a) => `
+        <div class="achievement ${isUnlocked(a.id) ? 'on' : ''}">
+            <span class="badge">${icon(isUnlocked(a.id) ? 'award' : 'lock')}</span>
+            <div><b>${a.name}</b><small>${a.desc}</small></div>
+        </div>`).join('');
+    refreshIcons($('screen-hub'));
+}
+
+// ---------- rules ----------
+
 function showRules(key, firstTime = false) {
     const data = RULES[key];
     if (!data) return;
-    $('modal-title').textContent = firstTime ? `HOW TO PLAY: ${data.title.replace(' RULES', '')}` : data.title;
+    const cart = CARTRIDGES.find((c) => c.key === key);
+    $('rules-card').className = `modal-card ${cart?.theme ?? ''}`;
+    $('modal-eyebrow').textContent = firstTime ? 'New game · how to play' : 'How to play';
+    $('modal-title').textContent = cart?.title ?? data.title;
     $('modal-content').innerHTML = '';
     for (const line of data.lines) {
         const li = document.createElement('li');
-        li.textContent = `> ${line}`;
+        li.textContent = line;
         $('modal-content').appendChild(li);
     }
-    $('rules-modal').classList.remove('hidden');
+    $('rules-modal').hidden = false;
 }
 
-const closeRules = () => $('rules-modal').classList.add('hidden');
+const closeRules = () => { $('rules-modal').hidden = true; };
+
+// ---------- settings ----------
+
+const THEMES = ['system', 'light', 'dark'];
+
+function effectiveDark() {
+    if (settings.theme === 'dark') return true;
+    if (settings.theme === 'light') return false;
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+}
+
+function renderLevel() {
+    $('bar-level-ring').textContent = levelOf();
+    $('bar-level-ring').style.setProperty('--p', Math.round(levelProgress() * 100));
+    $('bar-level-label').textContent = `Level ${levelOf()}`;
+}
 
 function applySettings() {
     setAudio(settings.audio);
-    $('audio-toggle').innerHTML = `<i data-icon="${settings.audio ? 'volume-2' : 'volume-x'}" class="w-4 h-4"></i>`;
-    $('crt-layer').classList.toggle('off', !settings.crt);
-    $('difficulty-label').textContent = settings.difficulty.toUpperCase();
+    $('audio-toggle').innerHTML = icon(settings.audio ? 'volume-2' : 'volume-x');
+    $('audio-toggle').setAttribute('aria-label', settings.audio ? 'Mute sound' : 'Turn sound on');
+
+    if (settings.theme === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', settings.theme);
+    $('theme-toggle').innerHTML = icon(effectiveDark() ? 'moon' : 'sun');
+    $('theme-toggle').title = `Theme: ${settings.theme}`;
+
+    $('difficulty-select').value = settings.difficulty;
+    renderLevel();
     refreshIcons();
 }
 
@@ -105,28 +209,28 @@ const APP_ACTIONS = {
         settings.audio = !settings.audio;
         saveSettings();
         applySettings();
-        showToast(settings.audio ? '8-BIT AUDIO ON' : 'AUDIO MUTED');
+        showToast(settings.audio ? 'Sound on' : 'Sound off');
     },
-    crt: () => {
-        settings.crt = !settings.crt;
+    theme: () => {
+        settings.theme = THEMES[(THEMES.indexOf(settings.theme) + 1) % THEMES.length];
         saveSettings();
         applySettings();
-        showToast(settings.crt ? 'CRT FILTER ON' : 'CRT FILTER OFF');
-    },
-    difficulty: () => {
-        const next = DIFFICULTIES[(DIFFICULTIES.indexOf(settings.difficulty) + 1) % DIFFICULTIES.length];
-        settings.difficulty = next;
-        saveSettings();
-        applySettings();
-        playSound('card');
-        showToast(`${next.toUpperCase()} MODE: APPLIES ON RESET`);
+        showToast(`Theme: ${settings.theme === 'system' ? 'match device' : settings.theme}`);
     },
 };
+
+$('difficulty-select').addEventListener('change', (e) => {
+    settings.difficulty = e.target.value;
+    saveSettings();
+    playSound('card');
+    if (current === 'hub') renderHub();
+    showToast(`${settings.difficulty[0].toUpperCase()}${settings.difficulty.slice(1)} starts with your next game`);
+});
 
 document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
     if (!el) {
-        // B-Cell can target an empty patch of a zone track.
+        // B-Cell can target an empty patch of a lane.
         const zone = e.target.closest('[data-zone]');
         if (zone) immune.handleZoneClick(Number(zone.dataset.zone));
         if (e.target.id === 'rules-modal') closeRules();
@@ -145,6 +249,7 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applySettings);
 window.addEventListener('hashchange', () => go(location.hash.slice(1), { push: false }));
 
 applySettings();

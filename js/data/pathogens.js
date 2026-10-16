@@ -23,11 +23,11 @@ export const WAVES = [
 ];
 
 export const ABILITIES = {
-    macrophage: { label: 'MACROPHAGE', cost: 1, hint: '1 DMG, 2 VS BACTERIA', target: 'pathogen', color: 'bg-rose-900 hover:bg-rose-800',
+    macrophage: { label: 'Macrophage', cost: 1, hint: '1 damage, 2 against bacteria', target: 'pathogen', color: 'bg-rose-900 hover:bg-rose-800',
         fact: 'Macrophages belong to the innate immune system: fast, generic, and they swallow anything that looks foreign (phagocytosis). Bacteria are big enough to eat whole.' },
-    tcell: { label: 'T-CELL', cost: 2, hint: 'DESTROY A VIRUS', target: 'virus', color: 'bg-emerald-900 hover:bg-emerald-800',
+    tcell: { label: 'T-cell', cost: 2, hint: 'Destroys one virus outright', target: 'virus', color: 'bg-emerald-900 hover:bg-emerald-800',
         fact: 'Killer T-cells inspect your own cells for signs of viral infection and destroy the infected ones, so the virus has nowhere to copy itself.' },
-    bcell: { label: 'B-CELL', cost: 2, hint: '1 DMG TO A WHOLE ZONE', target: 'zone', color: 'bg-indigo-900 hover:bg-indigo-800',
+    bcell: { label: 'B-cell', cost: 2, hint: '1 damage to a whole lane', target: 'zone', color: 'bg-indigo-900 hover:bg-indigo-800',
         fact: 'B-cells pour out antibodies: Y-shaped proteins that lock onto one specific pathogen and tag it for destruction. An activated B-cell (a plasma cell) can release about 2,000 a second.' },
 };
 

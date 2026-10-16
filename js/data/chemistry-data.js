@@ -38,14 +38,6 @@ export const ATOM_FACTS = {
 // Hydrogen shows up most, like in the real universe.
 export const ATOM_WEIGHTS = { H: 6, O: 4, C: 2, N: 2, Na: 2, Cl: 2 };
 
-export const ATOM_COLORS = {
-    H:  'border-sky-400 text-sky-200',
-    O:  'border-rose-400 text-rose-200',
-    C:  'border-slate-300 text-slate-100',
-    N:  'border-indigo-400 text-indigo-200',
-    Na: 'border-amber-400 text-amber-200',
-    Cl: 'border-lime-400 text-lime-200',
-};
 
 export const WIN_SCORE = 150;
 export const HAND_LIMIT = 12;
@@ -53,3 +45,4 @@ export const START_HAND = 7;
 export const MARKET_SIZE = 5;
 export const DISCOVERY_BONUS = 10;
 export const DISCOVERY_FACT = 'First discovery: real chemists race too. Joseph Priestley and Carl Scheele both isolated oxygen in the 1770s, and historians still argue about who got there first.';
+export const ATOMIC_NUMBER = { H: 1, C: 6, N: 7, O: 8, Na: 11, Cl: 17 };

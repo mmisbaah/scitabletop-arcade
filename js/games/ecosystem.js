@@ -1,7 +1,7 @@
 // GAME 2: Ecosystem Builder. Energy flows up a 3-level food web, losing ~90%
 // at each step. Keep every level fed for 10 seasons.
 
-import { $, showToast, logTo, clearLog, setMeter, pick } from '../core/ui.js';
+import { $, showToast, logTo as rawLog, clearLog, setMeter, pick } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
@@ -14,6 +14,9 @@ const TIER_STYLE = {
     herbivore: 'border-amber-700 text-amber-300',
     predator: 'border-rose-700 text-rose-300',
 };
+
+// Species names are stored in capitals; show them in title case in the log.
+const logTo = (id, msg) => rawLog(id, msg.replace(/\b[A-Z]{2,}(?: [A-Z]{2,})*\b/g, (m) => cap(m)));
 
 let state;
 let onGameOver = () => {};
@@ -74,58 +77,62 @@ export function init() {
     render();
 }
 
+const cap = (name) => name.split(' ').map((w) => w[0] + w.slice(1).toLowerCase()).join(' ');
+
 function render() {
     setMeter('eco-div-bar', 'eco-div-val', diversity());
     setMeter('eco-stab-bar', 'eco-stab-val', state.stability);
+    const stab = $('eco-stab-bar').parentElement;
+    stab.className = `meter ${state.stability > 50 ? 'good' : state.stability > 25 ? 'warn' : 'bad'}`;
     $('eco-season').textContent = `${Math.min(state.season, CFG.seasons)} / ${CFG.seasons}`;
     $('eco-plays').textContent = state.plays;
 
     const hasWolf = state.board.predator.includes('WOLF');
-    $('eco-keystone').textContent = hasWolf ? 'WOLF +15%' : 'MISSING';
-    $('eco-keystone').className = hasWolf ? 'text-emerald-400' : 'text-rose-400';
+    $('eco-keystone').textContent = hasWolf ? '🐺 Wolf (+15% plants)' : 'Missing';
+    $('eco-keystone').className = hasWolf ? 'good' : 'bad';
     const kz = kudzuCount();
-    $('eco-invasive').textContent = kz ? `KUDZU x${kz}` : 'NONE';
-    $('eco-invasive').className = kz ? 'text-rose-400' : 'text-slate-500';
-    $('eco-event').textContent = state.lastEvent;
+    $('eco-invasive').textContent = kz ? `🌿 Kudzu ×${kz}` : 'None';
+    $('eco-invasive').className = kz ? 'bad' : '';
+    $('eco-event').textContent = state.lastEvent === 'NONE' ? 'Calm season' : cap(state.lastEvent);
 
     const e = energyReport();
-    const fed = (food, need) => (need === 0 ? 'text-slate-500' : food >= need ? 'text-emerald-400' : 'text-rose-400');
-    $('eco-energy-producer').innerHTML = `<span class="text-yellow-300">${Math.round(e.plantEnergy)}</span> energy made`;
-    $('eco-energy-herbivore').innerHTML = `food <span class="${fed(e.herbFood, e.herbNeed)}">${Math.round(e.herbFood)}</span> / need ${e.herbNeed}`;
-    $('eco-energy-predator').innerHTML = `food <span class="${fed(e.predFood, e.predNeed)}">${Math.round(e.predFood)}</span> / need ${e.predNeed}`;
+    const fed = (food, need) => (need === 0 ? '' : food >= need ? 'ok' : 'short');
+    $('eco-energy-producer').innerHTML = `<span class="ok">${Math.round(e.plantEnergy)}</span> energy made`;
+    $('eco-energy-herbivore').innerHTML = `Food <span class="${fed(e.herbFood, e.herbNeed)}">${Math.round(e.herbFood)}</span> of ${e.herbNeed} needed`;
+    $('eco-energy-predator').innerHTML = `Food <span class="${fed(e.predFood, e.predNeed)}">${e.predFood.toFixed(1)}</span> of ${e.predNeed} needed`;
 
     for (const tier of TIERS) {
         $(`eco-tier-${tier}`).innerHTML = state.board[tier].map((name, i) => {
             const sp = SPECIES[name];
-            const style = isKudzu(name) ? 'border-lime-400 text-lime-300 bg-lime-950' : `${TIER_STYLE[tier]} bg-slate-900`;
-            const stat = sp.tier === 'producer' ? `+${sp.energy}` : `-${sp.need}`;
+            const stat = isKudzu(name) ? 'inedible' : sp.tier === 'producer' ? `+${sp.energy}` : `needs ${sp.need}`;
             return `
-            <button data-action="ecosystem:remove" data-tier="${tier}" data-arg="${i}"
-                class="w-full text-left px-2 py-1 border-2 ${style} font-pixel text-[10px] hover:border-yellow-400 flex justify-between items-center gap-1"
-                title="${sp.diet ? `Eats: ${sp.diet.join(', ')}` : ''}">
-                <span><span class="text-base not-italic">${sp.icon}</span> ${name}</span><span class="text-[8px] text-slate-400">${isKudzu(name) ? 'INEDIBLE' : stat}</span>
+            <button class="organism ${isKudzu(name) ? 'invasive' : ''}" data-action="ecosystem:remove" data-tier="${tier}" data-arg="${i}"
+                title="${sp.diet ? `Eats ${sp.diet.map(cap).join(', ')}. ` : ''}Tap to remove (1 play)">
+                <span class="emoji" aria-hidden="true">${sp.icon}</span><span class="name">${cap(name)}</span><span class="val">${stat}</span>
             </button>`;
-        }).join('') || `<span class="font-pixel text-[9px] text-slate-600">EMPTY</span>`;
+        }).join('') || '<span class="empty">Empty</span>';
     }
 
     $('eco-hand').innerHTML = state.hand.map((name, i) => {
         const sp = SPECIES[name];
         const kz = isKudzu(name);
-        const detail = sp.tier === 'producer' ? `${sp.energy} ENERGY` : sp.diet ? `EATS ${sp.diet.length} PREY` : `NEEDS ${sp.need}`;
+        const detail = kz ? 'Invasive seed. Burn it now or it spreads at season end.'
+            : sp.tier === 'producer' ? `Producer · makes ${sp.energy}${sp.fertilizes ? ' · fertilises' : ''}${sp.fireproof ? ' · fireproof' : ''}`
+            : sp.diet ? `Predator · needs ${sp.need} · eats ${sp.diet.map(cap).join(', ')}`
+            : `Herbivore · needs ${sp.need}${sp.breed ? ' · breeds fast' : ''}`;
         return `
-        <button data-action="ecosystem:play" data-arg="${i}"
-            class="arcade-btn ${kz ? 'bg-lime-900 text-lime-200' : 'bg-slate-950 text-yellow-300'} hover:bg-slate-800 text-[10px] flex-col items-start"
-            title="${kz ? 'Burn this invasive seed (1 play) or it invades at season end' : sp.diet ? `Eats: ${sp.diet.join(', ')}` : `Deploy as ${sp.tier}`}">
-            <span>${sp.icon} ${kz ? 'BURN KUDZU' : `+ ${name}`}</span>
-            <span class="text-[8px] text-slate-400 normal-case">${kz ? 'OR IT INVADES' : detail}</span>
+        <button class="species-card ${kz ? 'invasive' : ''}" data-action="ecosystem:play" data-arg="${i}">
+            <span class="emoji" aria-hidden="true">${sp.icon}</span>
+            <b>${kz ? 'Burn Kudzu' : cap(name)}</b>
+            <small>${detail}</small>
         </button>`;
-    }).join('') || `<span class="font-pixel text-[10px] text-slate-500">NO RESERVES</span>`;
+    }).join('') || '<span class="empty">No reserve species. One arrives each season.</span>';
 }
 
 function spendPlay() {
     if (state.plays <= 0) {
         playSound('error');
-        showToast('NO PLAYS LEFT! NEXT SEASON');
+        showToast('No plays left this season. Tap Next season.');
         return false;
     }
     state.plays -= 1;
@@ -140,7 +147,7 @@ function rollEvent(notes) {
     const kind = pick(Object.keys(EVENTS));
     state.lastEvent = EVENTS[kind].name;
     teach('ecosystem', EVENTS[kind].fact);
-    showToast(`EVENT: ${EVENTS[kind].name}!`);
+    showToast(`Event: ${cap(EVENTS[kind].name)}`);
 
     if (kind === 'drought') {
         state.drought = true;
@@ -267,13 +274,14 @@ function finish() {
     logTo('eco-log', won ? `All ${CFG.seasons} seasons survived. Score ${score}.` : 'Stability hit 0. The food web collapsed.');
     onGameOver({
         won,
-        title: won ? 'HABITAT SURVIVED!' : 'ECOSYSTEM COLLAPSED',
+        title: won ? 'Your habitat thrived' : 'The ecosystem collapsed',
         score,
         stats: [
-            ['SEASONS', `${state.season} / ${CFG.seasons}`],
-            ['STABILITY', `${state.stability}%`],
-            ['BIODIVERSITY', `${diversity()}%`],
+            ['Seasons', `${state.season} / ${CFG.seasons}`],
+            ['Stability', `${state.stability}%`],
+            ['Biodiversity', `${diversity()}%`],
         ],
+        metrics: { wolf: state.board.predator.includes('WOLF'), diversity: diversity() },
     });
 }
 
@@ -288,11 +296,11 @@ const actions = {
         teach('ecosystem', SPECIES[name].fact);
         if (isKudzu(name)) {
             logTo('eco-log', 'You burned an invasive Kudzu seed.');
-            showToast('KUDZU SEED BURNED');
+            showToast('Kudzu seed burned');
         } else {
             state.board[SPECIES[name].tier].push(name);
             logTo('eco-log', `Introduced ${name}.`);
-            showToast(`INTRODUCED ${name}!`);
+            showToast(`${cap(name)} released`);
         }
         render();
     },
@@ -341,7 +349,7 @@ const actions = {
 
 export function handle(action, arg, el) {
     if (state.over && action !== 'reset') {
-        showToast('GAME OVER! PRESS RESET');
+        showToast('Game over. Press Restart to play again.');
         return;
     }
     const fn = actions[action];

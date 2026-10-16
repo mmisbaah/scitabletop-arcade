@@ -47,40 +47,42 @@ function findPathogen(id) {
     return null;
 }
 
+const GLYPHS = { macrophage: '🫧', tcell: '🎯', bcell: '🧬' };
+const nice = (name) => (name === 'E. COLI' ? 'E. coli' : name[0] + name.slice(1).toLowerCase());
+
 function render() {
-    $('immune-ap').textContent = `${state.ap} AP`;
+    $('immune-ap').innerHTML = Array.from({ length: apPerTurn() }, (_, i) => `<i class="${i < state.ap ? 'on' : ''}"></i>`).join('');
+    $('immune-ap').setAttribute('aria-label', `${state.ap} action points left`);
     setMeter('immune-health-bar', 'immune-health-val', state.health);
-    const tone = state.health > 50 ? 'emerald' : state.health > 25 ? 'amber' : 'rose';
-    $('immune-health-bar').className = `h-full ${{ emerald: 'bg-emerald-500', amber: 'bg-amber-500', rose: 'bg-rose-500' }[tone]}`;
-    $('immune-health-val').className = { emerald: 'text-emerald-400', amber: 'text-amber-400', rose: 'text-rose-400' }[tone];
-    $('immune-wave').textContent = `WAVE ${Math.min(state.wave, WAVES.length)} / ${WAVES.length}`;
+    $('immune-health-meter').className = `meter ${state.health > 50 ? 'good' : state.health > 25 ? 'warn' : 'bad'}`;
+    $('immune-wave').textContent = `${Math.min(state.wave, WAVES.length)} / ${WAVES.length}`;
     $('immune-memory').innerHTML = state.memory.size
-        ? [...state.memory].map((n) => `<span class="text-indigo-200">✓ ${n}</span>`).join('<br>')
-        : '<span class="text-slate-500">Nothing yet. Finish a pathogen with a T-Cell or B-Cell to remember it.</span>';
+        ? `<div class="memory-list">${[...state.memory].map((n) => `<span class="chip game">✓ ${nice(n)}</span>`).join('')}</div>`
+        : '<p class="muted" style="font-size:.88rem">Nothing yet. Finish a pathogen with a T-cell or B-cell to remember it.</p>';
 
     $('immune-abilities').innerHTML = Object.entries(ABILITIES).map(([key, a]) => `
-        <button data-action="immune:arm" data-arg="${key}"
-            class="arcade-btn ${a.color} text-white w-full flex justify-between items-center gap-2 text-[10px] ${state.armed === key ? 'armed' : ''}"
+        <button class="ability ${state.armed === key ? 'is-armed' : ''}" data-action="immune:arm" data-arg="${key}"
             ${state.ap < a.cost ? 'aria-disabled="true"' : ''}>
-            <span class="text-left">${a.label}<br><span class="text-slate-300 text-[8px]">${a.hint}</span></span>
-            <span class="text-yellow-300">${a.cost} AP</span>
+            <span class="glyph" aria-hidden="true">${GLYPHS[key]}</span>
+            <span><b>${a.label}</b><small>${a.hint}</small></span>
+            <span class="cost">${a.cost} AP</span>
         </button>
     `).join('');
 
     const armed = state.armed && ABILITIES[state.armed];
     for (let z = 0; z < 3; z++) {
-        const zoneEl = $(`immune-zone-${z}`);
-        zoneEl.classList.toggle('targetable', armed?.target === 'zone' && state.zones[z].length > 0);
-        zoneEl.innerHTML = state.zones[z].map((p) => {
+        const lane = $(`immune-zone-${z}`);
+        lane.classList.toggle('targetable', armed?.target === 'zone' && state.zones[z].length > 0);
+        lane.innerHTML = state.zones[z].map((p) => {
             const targetable = armed && (armed.target === 'pathogen' || (armed.target === 'virus' && p.kind === 'virus'));
-            const style = p.kind === 'virus' ? 'bg-fuchsia-950 border-fuchsia-500 text-fuchsia-200' : 'bg-rose-950 border-rose-600 text-rose-200';
             return `
-            <button data-action="immune:target" data-arg="${p.id}"
-                class="px-2 py-1 border-2 ${style} font-pixel text-[10px] whitespace-nowrap ${targetable ? 'outline outline-2 outline-yellow-400 cursor-crosshair' : ''}">
-                ${p.name}${p.remembered ? ' <span class="text-indigo-300" title="Remembered: weaker, and macrophages do +1">✓</span>' : ''}
-                <br><span class="text-[8px] text-slate-300">${p.kind.toUpperCase()} ${'#'.repeat(p.hp)}</span>
+            <button class="pathogen ${p.kind} ${targetable ? 'targetable' : ''}" data-action="immune:target" data-arg="${p.id}"
+                aria-label="${nice(p.name)}, ${p.kind}, ${p.hp} HP${p.remembered ? ', remembered' : ''}">
+                <span class="kind">${p.kind}</span>
+                <b>${nice(p.name)}${p.remembered ? ' <span class="chip game" title="Remembered: weaker, and macrophages do +1">✓</span>' : ''}</b>
+                <span class="hp">${'<i></i>'.repeat(p.hp)}</span>
             </button>`;
-        }).join('') || `<span class="font-pixel text-[9px] text-slate-600">CLEAR</span>`;
+        }).join('') || '<span class="empty">Clear</span>';
     }
 }
 
@@ -92,7 +94,7 @@ function remember(p, source) {
     if (state.memory.has(p.name)) return;
     state.memory.add(p.name);
     logTo('immune-log', `Memory cells now recognise ${p.name}.`);
-    showToast(`MEMORY: ${p.name}`);
+    showToast(`Memory cells now recognise ${nice(p.name)}`);
     teach('immune', state.memory.size === 1 ? MEMORY_FACTS.learned : MEMORY_FACTS.vaccine);
 }
 
@@ -137,14 +139,15 @@ function endGame(won) {
     logTo('immune-log', won ? `All ${WAVES.length} waves defeated with ${state.health}% organ health.` : 'The organ has failed.');
     onGameOver({
         won,
-        title: won ? 'INFECTION CLEARED!' : 'ORGAN FAILURE',
+        title: won ? 'Infection cleared' : 'Organ failure',
         score: won ? state.health * 2 + state.memory.size * 10 : 0,
         stats: [
-            ['ORGAN HEALTH', `${state.health}%`],
-            ['WAVES', `${Math.min(state.wave, WAVES.length)} / ${WAVES.length}`],
-            ['PATHOGENS DESTROYED', state.kills],
-            ['MEMORY BUILT', `${state.memory.size} / ${Object.keys(PATHOGENS).length}`],
+            ['Organ health', `${state.health}%`],
+            ['Waves', `${Math.min(state.wave, WAVES.length)} / ${WAVES.length}`],
+            ['Pathogens destroyed', state.kills],
+            ['Memory built', `${state.memory.size} / ${Object.keys(PATHOGENS).length}`],
         ],
+        metrics: { memory: state.memory.size, health: state.health },
     });
 }
 
@@ -159,7 +162,7 @@ const actions = {
         const a = ABILITIES[key];
         if (state.ap < a.cost) {
             playSound('error');
-            showToast('NOT ENOUGH AP');
+            showToast('Not enough action points. End your turn to refill.');
             return;
         }
         state.armed = state.armed === key ? null : key;
@@ -174,7 +177,7 @@ const actions = {
         // Clicking a pathogen with B-Cell armed targets its zone.
         if (state.armed === 'bcell') return actions.zone(hit.z);
         if (!state.armed) {
-            showToast('PICK AN ABILITY FIRST');
+            showToast('Pick an immune cell first');
             return;
         }
         const { z, p } = hit;
@@ -182,7 +185,7 @@ const actions = {
             if (p.kind !== 'virus') {
                 playSound('error');
                 shake(el);
-                showToast('T-CELLS ONLY TARGET VIRUSES');
+                showToast('T-cells only attack viruses');
                 return;
             }
             spend('tcell');
@@ -216,7 +219,7 @@ const actions = {
             playSound('lose');
             shake($('immune-zone-2'));
             logTo('immune-log', `BREACH! Organ takes ${breach} damage.`);
-            showToast(`ORGAN BREACH! -${breach}%`);
+            showToast(`Breach! Organ health −${breach}%`);
             teach('immune', BREACH_FACT);
         } else {
             playSound('synth');
@@ -243,7 +246,7 @@ const actions = {
 
 export function handle(action, arg, el) {
     if (state.over && action !== 'reset') {
-        showToast('GAME OVER! PRESS RESET');
+        showToast('Game over. Press Restart to play again.');
         return;
     }
     const fn = actions[action];

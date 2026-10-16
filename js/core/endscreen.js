@@ -1,51 +1,82 @@
-// End-of-game results: score, personal best, stats and the facts the player met.
+// Results screen: stars, score, personal best, XP and level, new achievements,
+// stats and the facts the player met this round.
 
-import { $, refreshIcons } from './ui.js';
+import { $, refreshIcons, icon } from './ui.js';
 import { learnedFacts } from './facts.js';
 import { settings, getBest, recordScore } from './storage.js';
+import { recordResult, levelOf, levelProgress, totalXp } from './progress.js';
+import { CARTRIDGES } from '../data/rules.js';
 
+const XP_PER_LEVEL = 250;
 let replayGame = null;
 
-export function showEnd(game, { won, title, score, stats }) {
+function setList(el, items, make) {
+    el.innerHTML = '';
+    for (const item of items) el.appendChild(make(item));
+}
+
+export function showEnd(game, result) {
     replayGame = game;
+    const { won, title, score, stats } = result;
     const counts = typeof score === 'number';
     const isRecord = counts && won && recordScore(game, score);
     const best = getBest(game);
+    const progress = recordResult(game, result);
+
+    const card = $('end-card');
+    card.className = `modal-card ${CARTRIDGES.find((c) => c.key === game)?.theme ?? ''}`;
+    card.style.setProperty('--game-soft', 'color-mix(in srgb, var(--game) 13%, var(--surface))');
+    card.style.setProperty('--game-line', 'color-mix(in srgb, var(--game) 35%, var(--line))');
 
     const badge = $('end-badge');
-    badge.textContent = isRecord ? 'NEW HIGH SCORE!' : won ? 'VICTORY' : 'GAME OVER';
-    badge.className = `inline-block px-3 py-1 font-pixel text-[10px] border-2 border-black ${isRecord ? 'bg-yellow-400 text-black animate-pulse' : won ? 'bg-emerald-500 text-black' : 'bg-rose-600 text-white'}`;
+    badge.textContent = isRecord ? 'New high score' : won ? 'Victory' : 'Game over';
+    badge.className = `chip ${won ? 'good' : 'bad'}`;
     $('end-title').textContent = title;
-    $('end-score').textContent = counts ? score : '-';
-    $('end-best').textContent = best ?? '-';
+    $('end-stars').innerHTML = [1, 2, 3].map((n) => icon('star', `icon${n <= progress.stars ? ' on' : ''}`)).join('');
+    $('end-stars').setAttribute('aria-label', `${progress.stars} of 3 stars`);
+
+    $('end-score').textContent = counts ? score : '–';
+    $('end-best').textContent = best ?? '–';
+    $('end-xp').textContent = `+${progress.xpGained}`;
+
+    const level = levelOf();
+    $('end-level').textContent = progress.levelAfter > progress.levelBefore ? `Level up! You reached level ${level}` : `Level ${level}`;
+    $('end-level-next').textContent = `${XP_PER_LEVEL - (totalXp() % XP_PER_LEVEL)} XP to level ${level + 1}`;
+    $('end-level-bar').style.width = `${Math.round(levelProgress() * 100)}%`;
+
+    setList($('end-unlocks'), progress.newAchievements, (a) => {
+        const div = document.createElement('div');
+        div.className = 'unlock';
+        div.innerHTML = `<span class="badge">${icon('award')}</span><div><b></b><br><small class="muted"></small></div>`;
+        div.querySelector('b').textContent = `Achievement unlocked: ${a.name}`;
+        div.querySelector('small').textContent = a.desc;
+        return div;
+    });
 
     $('end-stats').innerHTML = '';
-    for (const [k, v] of [...stats, ['DIFFICULTY', settings.difficulty.toUpperCase()]]) {
+    for (const [k, v] of [...stats, ['Difficulty', settings.difficulty[0].toUpperCase() + settings.difficulty.slice(1)]]) {
         const dt = document.createElement('dt');
-        dt.className = 'text-slate-400';
-        dt.textContent = k;
+        dt.textContent = k[0] + k.slice(1).toLowerCase();
         const dd = document.createElement('dd');
-        dd.className = 'text-right text-cyan-200';
         dd.textContent = v;
         $('end-stats').append(dt, dd);
     }
 
     const facts = learnedFacts(game);
-    $('end-learned').innerHTML = '';
-    for (const fact of facts.length ? facts : ['Play a little longer and the Lab Notes will start filling up.']) {
+    setList($('end-learned'), facts.length ? facts : ['Play a little longer and the lab notes will start filling up.'], (fact) => {
         const li = document.createElement('li');
-        li.textContent = `> ${fact}`;
-        $('end-learned').appendChild(li);
-    }
+        li.textContent = fact;
+        return li;
+    });
 
-    $('end-modal').classList.remove('hidden');
+    $('end-modal').hidden = false;
     refreshIcons($('end-modal'));
     $('end-replay').focus({ preventScroll: true });
-    $('end-modal').firstElementChild.scrollTop = 0;
+    card.scrollTop = 0;
 }
 
 export function hideEnd() {
-    $('end-modal').classList.add('hidden');
+    $('end-modal').hidden = true;
 }
 
 export const lastGame = () => replayGame;

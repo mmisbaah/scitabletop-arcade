@@ -1,12 +1,12 @@
 // GAME 1: Elemental Alchemy. Player vs a CPU chemist, competing for the same
 // face-up atom market and racing to discover each molecule first.
 
-import { $, showToast, logTo, clearLog, shake, pick } from '../core/ui.js';
+import { $, showToast, logTo, clearLog, shake, pick, setMeter, floatPoints } from '../core/ui.js';
 import { playSound } from '../core/audio.js';
 import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
 import {
-    RECIPES, VALENCE, ATOM_FACTS, ATOM_WEIGHTS, ATOM_COLORS,
+    RECIPES, VALENCE, ATOM_FACTS, ATOM_WEIGHTS, ATOMIC_NUMBER,
     WIN_SCORE, HAND_LIMIT, START_HAND, MARKET_SIZE, DISCOVERY_BONUS, DISCOVERY_FACT,
 } from '../data/chemistry-data.js';
 
@@ -87,56 +87,55 @@ export function init() {
         over: false,
     };
     clearLog('chem-log', 'Lab open. Build a molecule, take from the market, or draw.');
-    resetFacts('chemistry', 'The small number on each atom is its valence: how many bonds it makes. A molecule works when every bond is used.');
+    resetFacts('chemistry', 'The dots on each atom show its valence: how many bonds it makes. A molecule works when every bond is used. The small number is the atomic number, the count of protons.');
     render();
 }
 
+// Periodic-table style tile: atomic number, symbol, one dot per bond it makes.
 function atomCard(a, action, i, extra = '') {
     return `
-        <button data-action="chemistry:${action}" data-arg="${i}" title="Valence ${VALENCE[a]}"
-            class="relative w-11 h-14 bg-slate-950 border-2 ${ATOM_COLORS[a]} font-pixel text-xs hover:border-yellow-400 shadow-[2px_2px_0px_#000] ${extra}">
-            ${a}<span class="absolute top-0.5 right-1 text-[8px] text-yellow-300">${VALENCE[a]}</span>
+        <button class="atom ${extra}" style="--el:var(--el-${a})" data-action="chemistry:${action}" data-arg="${i}"
+            data-atom="${a}" aria-label="${a}, makes ${VALENCE[a]} bond${VALENCE[a] > 1 ? 's' : ''}">
+            <span class="atom-z">${ATOMIC_NUMBER[a]}</span>
+            <span class="atom-sym">${a}</span>
+            <span class="atom-bonds">${'<i></i>'.repeat(VALENCE[a])}</span>
         </button>`;
 }
 
 function render() {
     $('chem-p1').textContent = state.p1;
     $('chem-cpu').textContent = state.cpu;
+    setMeter('chem-p1-bar', null, (state.p1 / WIN_SCORE) * 100);
+    setMeter('chem-cpu-bar', null, (state.cpu / WIN_SCORE) * 100);
     $('chem-turn').textContent = state.turn;
-    $('chem-trade-btn').classList.toggle('armed', state.trading);
+    $('chem-trade-btn').classList.toggle('is-armed', state.trading);
     $('chem-hand-count').textContent = `${state.hand.length + state.bench.length}/${HAND_LIMIT}`;
-    $('chem-cpu-hand').textContent = `CPU HOLDS ${state.cpuHand.length} ATOMS`;
+    $('chem-cpu-hand').textContent = `CPU holds ${state.cpuHand.length} atoms`;
 
     const pool = countAtoms([...state.hand, ...state.bench]);
     $('chem-recipes').innerHTML = RECIPES.map((r) => {
         const ready = canBuild(pool, r);
         const by = state.discovered[r.formula];
-        const badge = by
-            ? `<span class="font-pixel text-[8px] ${by === 'YOU' ? 'text-emerald-400' : 'text-rose-400'}">FOUND BY ${by}</span>`
-            : `<span class="font-pixel text-[8px] text-yellow-300">+${DISCOVERY_BONUS} IF FIRST</span>`;
+        const sub = by
+            ? `<span class="recipe-sub">Discovered by ${by === 'YOU' ? 'you' : 'the CPU'}</span>`
+            : `<span class="recipe-sub" style="color:var(--game)">+${DISCOVERY_BONUS} if you make it first</span>`;
         return `
-        <div class="p-2 bg-slate-900 border ${ready ? 'border-emerald-500' : 'border-slate-800'} flex justify-between items-center gap-2">
-            <div>
-                <span class="font-pixel text-[10px] ${ready ? 'text-white' : 'text-slate-400'}">${r.name}</span>
-                <span class="font-pixel text-[10px] text-emerald-400 ml-1 border border-emerald-800 px-1">${r.formula}</span>
-                <div>${badge}</div>
-            </div>
-            <span class="font-pixel text-xs text-yellow-400">+${r.pts}</span>
+        <div class="recipe ${ready ? 'is-ready' : ''}">
+            <span class="recipe-name">${r.name[0]}${r.name.slice(1).toLowerCase()} <span class="recipe-formula">${r.formula}</span></span>
+            <span class="recipe-pts num">+${r.pts}</span>
+            ${sub}
         </div>`;
     }).join('');
 
-    $('chem-bench').innerHTML = state.bench.length === 0
-        ? `<span class="font-pixel text-[10px] text-slate-500">SELECT ATOMS FROM YOUR HAND</span>`
-        : state.bench.map((a, i) => `
-            <button data-action="chemistry:unbench" data-arg="${i}"
-                class="w-12 h-12 bg-emerald-500 text-black font-pixel text-xs border-2 border-black shadow-[2px_2px_0px_#000]">${a}</button>
-        `).join('');
+    $('chem-bench-slots').innerHTML = state.bench.length === 0
+        ? `<span class="bench-hint">Drop atoms here to build a molecule</span>`
+        : state.bench.map((a, i) => atomCard(a, 'unbench', i, 'on-bench')).join('');
 
     $('chem-market').innerHTML = state.market.map((a, i) => atomCard(a, 'take', i)).join('');
 
     $('chem-hand').innerHTML = state.hand
-        .map((a, i) => atomCard(a, 'bench', i, state.trading ? 'outline outline-2 outline-dashed outline-yellow-400' : ''))
-        .join('') || `<span class="font-pixel text-[10px] text-slate-500">EMPTY HAND, DRAW!</span>`;
+        .map((a, i) => atomCard(a, 'bench', i, state.trading ? 'is-trade' : ''))
+        .join('') || `<span class="empty">No atoms left. Draw or take from the market.</span>`;
 }
 
 function score(who, recipe) {
@@ -159,15 +158,16 @@ function checkWinner() {
     logTo('chem-log', won ? `You reached ${state.p1} points. Victory!` : `CPU reached ${state.cpu} points.`);
     onGameOver({
         won,
-        title: won ? 'MASTER ALCHEMIST!' : 'THE CPU WINS',
+        title: won ? 'Master alchemist!' : 'The CPU chemist wins',
         score: won ? state.p1 + (state.p1 - state.cpu) : 0,
         stats: [
-            ['YOUR POINTS', state.p1],
-            ['CPU POINTS', state.cpu],
-            ['MOLECULES MADE', state.made.YOU],
-            ['DISCOVERIES', Object.values(state.discovered).filter((w) => w === 'YOU').length],
-            ['TURNS', state.turn],
+            ['Your points', state.p1],
+            ['CPU points', state.cpu],
+            ['Molecules made', state.made.YOU],
+            ['Discoveries', Object.values(state.discovered).filter((w) => w === 'YOU').length],
+            ['Turns', state.turn],
         ],
+        metrics: { discoveries: Object.values(state.discovered).filter((w) => w === 'YOU').length },
     });
     return true;
 }
@@ -259,7 +259,7 @@ const roomInHand = () => HAND_LIMIT - state.hand.length - state.bench.length;
 function handFull() {
     if (roomInHand() > 0) return false;
     playSound('error');
-    showToast('HAND FULL! TRADE OR BUILD');
+    showToast('Your hand is full. Build or trade first.');
     return true;
 }
 
@@ -296,7 +296,7 @@ const actions = {
         teach('chemistry', ATOM_FACTS[atom]);
         logTo('chem-log', `You took ${atom} from the market.`);
         if (state.picks < 2 && roomInHand() > 0) {
-            showToast('TAKE 1 MORE FROM THE MARKET');
+            showToast('Pick one more atom from the market');
             return render();
         }
         endPlayerTurn();
@@ -308,14 +308,15 @@ const actions = {
         if (!match) {
             playSound('error');
             shake($('chem-bench'));
-            showToast('INVALID MOLECULE RATIO!');
+            showToast('Those atoms don\'t balance. See the lab notes.');
             teach('chemistry', explainMiss(counts));
             return;
         }
         playSound('synth');
         state.bench = [];
         const { pts, first } = score('YOU', match);
-        showToast(`${first ? 'DISCOVERED' : 'SYNTHESIZED'} ${match.name}! +${pts}`);
+        floatPoints(`+${pts}`, $('chem-bench'));
+        showToast(`${first ? 'Discovered' : 'Made'} ${match.name.toLowerCase()} (${match.formula})`);
         logTo('chem-log', `You synthesized ${match.formula} (+${pts}${first ? ', first discovery' : ''}).`);
         endPlayerTurn();
     },
@@ -333,27 +334,72 @@ const actions = {
     trade() {
         if (state.hand.length === 0) {
             playSound('error');
-            showToast('NOTHING TO TRADE');
+            showToast('You have no atoms to trade');
             return;
         }
         state.trading = !state.trading;
         playSound('card');
-        if (state.trading) showToast('CLICK A CARD TO TRADE IT');
+        if (state.trading) showToast('Tap one of your atoms to swap it');
         render();
     },
 };
 
 export function handle(action, arg) {
     if (state.over && action !== 'reset') {
-        showToast('GAME OVER! PRESS RESET');
+        showToast('Game over. Press Restart to play again.');
         return;
     }
     // Half-way through a market turn, only a second market pick (or bench moves) is allowed.
     if (state.picks > 0 && ['synthesize', 'draw', 'trade'].includes(action)) {
         playSound('error');
-        showToast('FINISH YOUR TURN: TAKE 1 MORE');
+        showToast('Finish your turn: pick one more atom');
         return;
     }
     const fn = actions[action];
     if (fn) fn(arg === undefined ? undefined : Number(arg));
 }
+
+// Drag an atom from your hand onto the bench (tapping works too).
+let drag = null;
+let suppressClick = false;
+
+document.addEventListener('pointerdown', (e) => {
+    const tile = e.target.closest('#chem-hand .atom');
+    if (!tile || state?.over || state?.trading) return;
+    drag = { tile, x: e.clientX, y: e.clientY, ghost: null };
+});
+
+document.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    if (!drag.ghost) {
+        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 8) return;
+        drag.ghost = drag.tile.cloneNode(true);
+        drag.ghost.classList.add('drag-ghost');
+        document.body.appendChild(drag.ghost);
+        drag.tile.classList.add('dragging');
+    }
+    drag.ghost.style.left = `${e.clientX}px`;
+    drag.ghost.style.top = `${e.clientY}px`;
+    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest('#chem-bench');
+    $('chem-bench').classList.toggle('drag-over', Boolean(over));
+});
+
+document.addEventListener('pointerup', (e) => {
+    if (!drag) return;
+    const { tile, ghost } = drag;
+    drag = null;
+    if (!ghost) return;
+    ghost.remove();
+    tile.classList.remove('dragging');
+    $('chem-bench').classList.remove('drag-over');
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+    if (document.elementFromPoint(e.clientX, e.clientY)?.closest('#chem-bench')) {
+        actions.bench(Number(tile.dataset.arg));
+    }
+});
+
+// A drag ends with a click on the tile; swallow it so the atom isn't moved twice.
+document.addEventListener('click', (e) => {
+    if (suppressClick && e.target.closest('#chem-hand')) e.stopPropagation();
+}, true);

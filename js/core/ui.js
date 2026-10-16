@@ -18,7 +18,7 @@ export function logTo(id, msg, max = 30) {
     const box = $(id);
     if (!box) return;
     const line = document.createElement('div');
-    line.textContent = `> ${msg}`;
+    line.textContent = msg;
     box.prepend(line);
     while (box.children.length > max) box.lastChild.remove();
 }
@@ -33,8 +33,23 @@ export function clearLog(id, firstLine) {
 export function setMeter(barId, valId, value) {
     const v = Math.max(0, Math.min(100, Math.round(value)));
     $(barId).style.width = `${v}%`;
-    $(valId).textContent = `${v}%`;
+    if (valId) $(valId).textContent = `${v}%`;
 }
+
+// "+30" that floats up from an element.
+export function floatPoints(text, anchor) {
+    if (!anchor) return;
+    const box = anchor.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'float-pts';
+    el.textContent = text;
+    el.style.left = `${box.left + box.width / 2}px`;
+    el.style.top = `${box.top}px`;
+    anchor.closest('.screen')?.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+}
+
+export const icon = (name, cls = 'icon') => `<i data-icon="${name}" class="${cls}"></i>`;
 
 export function shake(el) {
     if (!el) return;
@@ -50,7 +65,7 @@ export function refreshIcons(root = document) {
         if (!svg || el.dataset.drawn === el.dataset.icon) return;
         el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${svg}</svg>`;
         el.dataset.drawn = el.dataset.icon;
-        el.classList.add('inline-block');
+        el.classList.add('icon');
     });
 }
 

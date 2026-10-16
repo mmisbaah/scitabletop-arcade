@@ -1,30 +1,25 @@
 // Hub cartridge cards and the rules shown in the modal for each game.
-// Class names are written out in full so the Tailwind build can find them.
 
 export const CARTRIDGES = [
     {
-        key: 'chemistry', code: 'CHEM-01', tag: '1-PLAYER VS CPU', icon: 'flask-conical',
-        style: { rule: 'border-emerald-800', code: 'text-emerald-400', tag: 'bg-emerald-950 text-emerald-400 border-emerald-500', title: 'text-emerald-300 neon-text-green', btn: 'bg-emerald-500 hover:bg-emerald-400' },
-        title: 'ELEMENTAL ALCHEMY',
-        blurb: 'Draw atom cards (H, O, C, N, Na, Cl) and combine them in the right ratios to build molecules. Reach 150 points before the CPU chemist does.',
+        key: 'chemistry', tab: 'Alchemy', theme: 'theme-chem', icon: 'flask-conical', art: 'molecule',
+        title: 'Elemental Alchemy', subject: 'Chemistry', mode: 'vs CPU',
+        blurb: 'Combine atoms in the right ratios to build molecules. Fight the CPU over a shared atom market.',
     },
     {
-        key: 'ecosystem', code: 'BIO-02', tag: 'ECO-SIMULATOR', icon: 'trees',
-        style: { rule: 'border-amber-800', code: 'text-amber-400', tag: 'bg-amber-950 text-amber-400 border-amber-500', title: 'text-amber-300 neon-text-yellow', btn: 'bg-amber-500 hover:bg-amber-400' },
-        title: 'ECOSYSTEM BUILDER',
-        blurb: 'Run a habitat for 10 seasons. Producers feed herbivores, herbivores feed predators, and invasive Kudzu wants to eat the lot.',
+        key: 'ecosystem', tab: 'Ecosystem', theme: 'theme-eco', icon: 'trees', art: 'pyramid',
+        title: 'Ecosystem Builder', subject: 'Ecology', mode: 'Solo',
+        blurb: 'Run a habitat for 10 seasons. Feed every level of the food web and keep invasive Kudzu out.',
     },
     {
-        key: 'immune', code: 'IMM-03', tag: 'WAVE DEFENSE', icon: 'bug',
-        style: { rule: 'border-rose-800', code: 'text-rose-400', tag: 'bg-rose-950 text-rose-400 border-rose-500', title: 'text-rose-300 neon-text-pink', btn: 'bg-rose-500 hover:bg-rose-400' },
-        title: 'IMMUNE DEFENSE',
-        blurb: 'Spend action points on Macrophages, T-Cells and B-Cells to stop viruses and bacteria before they reach the organ core.',
+        key: 'immune', tab: 'Immune', theme: 'theme-imm', icon: 'bug', art: 'antibody',
+        title: 'Immune Defense', subject: 'Immunology', mode: 'Solo',
+        blurb: 'Command macrophages, T-cells and B-cells against waves of viruses and bacteria.',
     },
     {
-        key: 'quantum', code: 'PHY-04', tag: '2-PLAYER HOTSEAT', icon: 'atom',
-        style: { rule: 'border-cyan-800', code: 'text-cyan-400', tag: 'bg-cyan-950 text-cyan-400 border-cyan-500', title: 'text-cyan-300 neon-text-cyan', btn: 'bg-cyan-500 hover:bg-cyan-400' },
-        title: 'QUANTUM LEAP',
-        blurb: 'Chess with superposition. Electrons can sit on two squares at once, and only collapse when a rival piece gets close enough to look.',
+        key: 'quantum', tab: 'Quantum', theme: 'theme-qtm', icon: 'atom', art: 'board',
+        title: 'Quantum Leap Chess', subject: 'Physics', mode: 'vs CPU or friend',
+        blurb: 'Chess where electrons sit on two squares at once and collapse when a rival gets close.',
     },
 ];
 
@@ -32,20 +27,20 @@ export const RULES = {
     chemistry: {
         title: 'ELEMENTAL ALCHEMY RULES',
         lines: [
-            'Click atoms in your hand to move them onto the Lab Bench. Click a bench atom to send it back.',
-            'SYNTHESIZE when the bench matches a recipe exactly. The small number on each atom is its valence: H2O works because O makes 2 bonds and each H makes 1.',
+            'Tap an atom in your hand, or drag it, to put it on the bench. Tap a bench atom to send it back.',
+            'Press Synthesize when the bench matches a recipe exactly. The dots on each atom show its valence: H2O works because O makes 2 bonds and each H makes 1.',
             'Your turn is ONE of: synthesize, take 2 atoms of your choice from the shared market, draw 2 random atoms, or trade a card. Then the CPU plays.',
-            'The market is shared. The CPU takes from it too. On HARD it grabs the atom you are waiting for and gets a bonus atom each turn.',
+            'The market is shared. The CPU takes from it too. On Hard it grabs the atom you are waiting for and gets a bonus atom each turn.',
             'The first player to make each molecule earns a +10 discovery bonus. Hand limit is 12 atoms. First to 150 points wins.',
         ],
     },
     ecosystem: {
         title: 'ECOSYSTEM BUILDER RULES',
         lines: [
-            'You get 2 plays per season: deploy a species from your hand, or click a tile to remove it.',
+            'You get 2 plays per season: release a species from your reserve, or tap a tile to remove it.',
             'Plants make energy. Herbivores share 10% of it, predators share 10% of what herbivores ate. Each tier header shows food vs need: red means someone starves.',
             'Species differ: clover fertilises other plants, oaks survive fire, small herbivores breed when well fed, and each predator only eats certain prey (hover a tile to see).',
-            'WOLF is the keystone: while one lives, plants make 15% more energy. Diversity of 60%+ adds stability each season and makes disease less likely to bite.',
+            'The wolf is the keystone: while one lives, plants make 15% more energy. Diversity of 60%+ adds stability each season and makes disease less likely to bite.',
             'Kudzu is inedible and smothers a plant each season. Burn seeds in your hand or they blow in. Random droughts, fires and diseases happen too.',
             'Survive 10 seasons with stability above 0. Score = stability + biodiversity.',
         ],
@@ -53,24 +48,24 @@ export const RULES = {
     immune: {
         title: 'IMMUNE DEFENSE RULES',
         lines: [
-            'You have 3 AP per turn. Pick an ability, then click a pathogen (or a zone for B-Cells).',
-            'MACROPHAGE (1 AP): 1 damage, 2 vs bacteria. T-CELL (2 AP): destroys any virus. B-CELL (2 AP): 1 damage to every pathogen in one zone.',
-            'END TURN: pathogens in the Organ Core breach and deal damage equal to their HP x10. Everyone else moves one zone deeper and a new wave arrives.',
+            'You get 3 action points per turn (4 on Easy). Pick an immune cell, then tap a pathogen, or a lane for B-cells.',
+            'Macrophage (1 AP): 1 damage, 2 against bacteria. T-cell (2 AP): destroys any virus. B-cell (2 AP): 1 damage to every pathogen in one lane.',
+            'End turn: pathogens in the Organ Core breach and deal damage equal to their HP x10. Everyone else moves one zone deeper and a new wave arrives.',
             'Pathogens that get into the tissue or core can multiply: bacteria divide and viruses replicate. Stop them early.',
-            'MEMORY: a pathogen type you finish off with a T-Cell or B-Cell is remembered. Remembered pathogens arrive with 1 less HP, and Macrophages do +1 damage to them. Macrophage kills teach nothing.',
+            'Memory: a pathogen type you finish off with a T-cell or B-cell is remembered. Remembered pathogens arrive with 1 less HP, and Macrophages do +1 damage to them. Macrophage kills teach nothing.',
             'Survive 5 waves and clear the tracks to win. Organ health at 0 means game over.',
         ],
     },
     quantum: {
         title: 'QUANTUM LEAP CHESS RULES',
         lines: [
-            'You are Cyan and move first. Play the CPU (Rose) or switch MODE to 2-player hotseat. UNDO takes back your last move.',
-            'Click a piece, then a highlighted square. ATOM moves 1 square. PHOTON slides in a straight line. ELECTRON jumps to any square within 2.',
-            'SUPERPOSITION: move an electron to two different empty squares and it sits on both, or click the same square twice for a normal move.',
+            'You are Cyan and move first. Play the CPU (Rose), or use the mode button to play a friend on one device. Undo takes back your last move.',
+            'Tap a piece, then a highlighted square. Atom moves 1 square. Photon slides in a straight line. Electron jumps to any square within 2.',
+            'Superposition: move an electron to two different empty squares and it sits on both, or tap the same square twice for a normal move.',
             'A superposed electron collapses to one square (50/50) when a rival piece ends next to it or attacks it. Attack the wrong square and it was never there.',
-            'ABSORPTION: slide a photon onto your own Atom. The Atom becomes excited: its next move can reach 2 squares, and it re-emits the photon on the square it leaves.',
+            'Absorption: slide a photon onto your own Atom. The Atom becomes excited: its next move can reach 2 squares, and it re-emits the photon on the square it leaves.',
             'Science note: in real physics any interaction that reveals where a particle is causes collapse, not just a neighbour. Adjacency is a simplification so the board stays readable.',
-            'Capture the rival ATOM to win.',
+            'Capture the rival Atom to win.',
         ],
     },
 };

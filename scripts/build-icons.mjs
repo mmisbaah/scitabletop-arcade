@@ -2,7 +2,7 @@
 // so the page doesn't ship the whole 350 KB icon library.
 import { writeFileSync } from 'node:fs';
 
-const ICONS = ['gamepad-2', 'flask-conical', 'trees', 'bug', 'atom', 'volume-2', 'volume-x', 'book', 'undo-2', 'cpu', 'users', 'trophy', 'lightbulb', 'gauge'];
+const ICONS = ['gamepad-2', 'flask-conical', 'trees', 'bug', 'atom', 'volume-2', 'volume-x', 'book-open', 'undo-2', 'trophy', 'lightbulb', 'star', 'sun', 'moon', 'x', 'rotate-ccw', 'house', 'award', 'sparkles', 'lock', 'circle-help', 'play'];
 
 const toAttrs = (attrs) => Object.entries(attrs).map(([k, v]) => `${k}="${v}"`).join(' ');
 
