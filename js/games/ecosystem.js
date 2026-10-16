@@ -7,6 +7,9 @@ import { teach, resetFacts } from '../core/facts.js';
 import { byDifficulty } from '../core/difficulty.js';
 import { isYoung, byAge, say as sayFor } from '../core/age.js';
 import { ghost, reduced, burst } from '../core/anim.js';
+import { currentLevel } from '../core/progress.js';
+
+let LEVEL = 1;
 import { SPECIES, DRAW_WEIGHTS, EVENTS, ECO_FACTS, ECO_KID, SEASON_NAMES, AGE_TUNING, ECO_CONFIG as CFG } from '../data/species.js';
 
 const FULL_POOL = Object.entries(DRAW_WEIGHTS).flatMap(([name, n]) => Array(n).fill(name));
@@ -67,6 +70,7 @@ function energyReport() {
 }
 
 export function init() {
+    LEVEL = currentLevel('ecosystem');
     pos.clear();
     builtSeason = null;
     const sc = document.getElementById('eco-scene');
@@ -76,7 +80,8 @@ export function init() {
     DRAW_POOL = T.noKudzu ? FULL_POOL.filter((n) => !SPECIES[n].invasive) : FULL_POOL;
     state = {
         season: 1,
-        seasons: T.seasons ?? CFG.seasons,
+        // Each level adds two seasons.
+        seasons: Math.min(16, (T.seasons ?? CFG.seasons) + 2 * (LEVEL - 1)),
         stability: T.startStability ?? CFG.startStability,
         plays: CFG.playsPerSeason,
         board: structuredClone(CFG.startBoard),
@@ -312,7 +317,10 @@ function spendPlay() {
 function rollEvent(notes) {
     state.drought = false;
     state.lastEvent = 'NONE';
-    if (Math.random() >= (T.events ?? byDifficulty({ easy: 0.15, normal: 0.25, hard: 0.35 }) * (T.eventScale ?? 1))) return 0;
+    // Higher levels bring more droughts, fires and outbreaks (Explorers stay calm until level 2).
+    const base = T.events ?? byDifficulty({ easy: 0.15, normal: 0.25, hard: 0.35 }) * (T.eventScale ?? 1);
+    const chance = Math.min(0.6, base + (LEVEL - 1) * (T.events === 0 ? 0.06 : 0.05));
+    if (Math.random() >= chance) return 0;
 
     const kind = pick(Object.keys(EVENTS));
     state.lastEvent = EVENTS[kind].name;

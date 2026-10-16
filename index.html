@@ -61,6 +61,7 @@
         <div class="game-head">
             <div>
                 <div class="eyebrow"><i data-icon="flask-conical" class="icon"></i> Chemistry · vs CPU</div>
+                <span class="chip game level-chip" id="chemistry-level"></span>
                 <h2>Elemental Alchemy</h2>
                 <p>Build molecules from atom tiles. First to 150 points wins, and the first to make each molecule earns +10.</p>
             </div>
@@ -136,6 +137,7 @@
         <div class="game-head">
             <div>
                 <div class="eyebrow"><i data-icon="trees" class="icon"></i> Ecology · solo</div>
+                <span class="chip game level-chip" id="ecosystem-level"></span>
                 <h2>Ecosystem Builder</h2>
                 <p>Energy flows up the food web and only about 10% survives each step. Keep every level fed for 10 seasons.</p>
             </div>
@@ -211,6 +213,7 @@
         <div class="game-head">
             <div>
                 <div class="eyebrow"><i data-icon="bug" class="icon"></i> Immunology · solo</div>
+                <span class="chip game level-chip" id="immune-level"></span>
                 <h2>Immune Defense</h2>
                 <p>Pathogens march toward the organ. Spend action points on immune cells and survive 5 waves.</p>
             </div>
@@ -278,6 +281,7 @@
         <div class="game-head">
             <div>
                 <div class="eyebrow"><i data-icon="atom" class="icon"></i> Physics · vs CPU or friend</div>
+                <span class="chip game level-chip" id="quantum-level"></span>
                 <h2>Quantum Leap Chess</h2>
                 <p>Electrons can sit on two squares at once until something looks. Capture the rival Atom to win.</p>
             </div>
@@ -353,35 +357,36 @@
 
 <!-- Results -->
 <div class="modal" id="end-modal" hidden role="dialog" aria-modal="true" aria-labelledby="end-title">
-    <div class="modal-card" id="end-card">
-        <div class="result-hero">
+    <div class="modal-card end-card" id="end-card">
+        <div class="end-top">
             <div id="end-mascot" class="end-mascot"></div>
-            <span class="chip" id="end-badge"></span>
-            <h3 id="end-title" style="font-size:1.9rem;font-weight:800"></h3>
-            <div class="result-stars" id="end-stars"></div>
-        </div>
-        <div class="result-grid">
-            <div class="stat"><span class="eyebrow">Score</span><span class="stat-value" id="end-score"></span></div>
-            <div class="stat"><span class="eyebrow">Best</span><span class="stat-value" id="end-best"></span></div>
-            <div class="stat"><span class="eyebrow">XP</span><span class="stat-value" id="end-xp"></span></div>
-        </div>
-        <div class="xp-bar">
-            <div class="panel-head" style="margin:0"><b id="end-level"></b><span class="muted num" id="end-level-next"></span></div>
-            <div class="meter"><div id="end-level-bar" style="background:var(--accent)"></div></div>
-        </div>
-        <div class="stack" style="gap:8px" id="end-unlocks"></div>
-        <dl class="kv" id="end-stats"></dl>
-        <div class="note">
-            <span class="note-icon"><i data-icon="book-open" class="icon"></i></span>
-            <div class="note-body">
-                <div class="eyebrow" style="margin-bottom:6px">What you learned this round</div>
-                <ul class="learned" id="end-learned"></ul>
+            <div class="end-headline">
+                <span class="chip" id="end-badge"></span>
+                <h3 id="end-title"></h3>
+                <div class="result-stars" id="end-stars"></div>
             </div>
         </div>
-        <div class="modal-actions">
-            <button class="btn" id="end-read" hidden><i data-icon="volume-2" class="icon"></i>Read to me</button>
-            <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="house" class="icon"></i>All games</button>
-            <button class="btn btn-primary" data-action="app:replay" id="end-replay"><i data-icon="rotate-ccw" class="icon"></i>Play again</button>
+        <div class="end-strip">
+            <div><span class="eyebrow">Score</span><b class="num" id="end-score"></b></div>
+            <div><span class="eyebrow">Best</span><b class="num" id="end-best"></b></div>
+            <div><span class="eyebrow">XP</span><b class="num" id="end-xp"></b></div>
+        </div>
+        <div class="xp-bar">
+            <div class="xp-line"><b id="end-level"></b><span class="muted num" id="end-level-next"></span></div>
+            <div class="meter"><div id="end-level-bar" style="background:var(--accent)"></div></div>
+        </div>
+        <div class="level-up" id="end-level-up" hidden></div>
+        <div class="end-unlocks" id="end-unlocks"></div>
+        <div class="end-chips" id="end-stats"></div>
+        <details class="end-learned" id="end-learned-box">
+            <summary><i data-icon="book-open" class="icon"></i><span id="end-learned-title">What you learned</span></summary>
+            <ul class="learned" id="end-learned"></ul>
+        </details>
+        <div class="end-actions">
+            <button class="icon-btn" id="end-read" hidden aria-label="Read to me"><i data-icon="volume-2" class="icon"></i></button>
+            <button class="btn" data-action="app:go" data-arg="hub"><i data-icon="map" class="icon"></i>Map</button>
+            <button class="btn" data-action="app:replay" id="end-replay"><i data-icon="rotate-ccw" class="icon"></i><span id="end-replay-label">Play again</span></button>
+            <button class="btn btn-primary" data-action="app:next-level" id="end-next" hidden><span id="end-next-label">Next level</span><i data-icon="play" class="icon"></i></button>
         </div>
     </div>
 </div>

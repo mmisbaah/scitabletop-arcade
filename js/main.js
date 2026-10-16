@@ -4,8 +4,8 @@
 import { $, showToast, refreshIcons, icon } from './core/ui.js';
 import { playSound, setAudio } from './core/audio.js';
 import { settings, saveSettings, getBest } from './core/storage.js';
-import { showEnd, hideEnd, lastGame, recordQuietly } from './core/endscreen.js';
-import { ACHIEVEMENTS, isUnlocked, levelOf, levelProgress, totalXp, starsFor, journalSize } from './core/progress.js';
+import { showEnd, hideEnd, lastGame, recordQuietly, pendingNextLevel } from './core/endscreen.js';
+import { ACHIEVEMENTS, isUnlocked, levelOf, levelProgress, totalXp, starsFor, journalSize, currentLevel, unlockedLevel, setCurrentLevel } from './core/progress.js';
 import { CARTRIDGES, RULES, KID_CARTRIDGES, KID_RULES } from './data/rules.js';
 import { AGES, ageGroup, isYoung, setAge } from './core/age.js';
 import { mascotSVG } from './core/art.js';
@@ -18,6 +18,12 @@ import * as immune from './games/immune.js';
 import * as quantum from './games/quantum.js';
 
 const GAMES = { chemistry, ecosystem, immune, quantum };
+
+function startGame(key) {
+    GAMES[key].init();
+    const chip = document.getElementById(`${key}-level`);
+    if (chip) chip.textContent = `Level ${currentLevel(key)}`;
+}
 const TAB_COLORS = { chemistry: 'var(--chem)', ecosystem: 'var(--eco)', immune: 'var(--imm)', quantum: 'var(--qtm)' };
 const started = new Set();
 let current = 'hub';
@@ -57,7 +63,7 @@ function go(key, { push = true } = {}) {
     if (GAMES[target]) placeWalker(target);
     if (target === 'hub') renderHub();
     if (GAMES[target] && !started.has(target)) {
-        GAMES[target].init();
+        startGame(target);
         started.add(target);
     }
     if (push) history.replaceState(null, '', target === 'hub' ? location.pathname : `#${target}`);
@@ -140,6 +146,7 @@ function renderLocCard(key) {
                 ${starRow(i.stars)}
                 <span class="chip">${best === null ? 'Not played yet' : `Best ${best}`}</span>
                 <span class="chip game">${journalSize(key)} facts found</span>
+                <button class="chip level-pick" data-action="app:level" data-arg="${key}" title="Change level">Level ${currentLevel(key)} / ${unlockedLevel(key)} ▸</button>
             </div>
         </div>
         <div class="loc-actions">
@@ -270,7 +277,7 @@ function pickAge(age) {
         // Every game restarts with the new age group's rules.
         started.clear();
         if (GAMES[current]) {
-            GAMES[current].init();
+            startGame(current);
             started.add(current);
         }
     }
@@ -331,7 +338,25 @@ const APP_ACTIONS = {
     replay: () => {
         hideEnd();
         const game = lastGame();
-        if (GAMES[game]) GAMES[game].init();
+        if (GAMES[game]) startGame(game);
+    },
+    'next-level': () => {
+        const game = lastGame();
+        const n = pendingNextLevel();
+        hideEnd();
+        if (!GAMES[game] || !n) return;
+        setCurrentLevel(game, n);
+        playSound('win');
+        startGame(game);
+        showToast(`Level ${n}: here we go!`);
+        if (isYoung()) speak(`Level ${n}!`);
+    },
+    level: (key) => {
+        // Cycle through unlocked levels from the map card.
+        const n = currentLevel(key) >= unlockedLevel(key) ? 1 : currentLevel(key) + 1;
+        setCurrentLevel(key, n);
+        started.delete(key);
+        renderLocCard(key);
     },
     audio: () => {
         settings.audio = !settings.audio;

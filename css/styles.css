@@ -924,3 +924,44 @@ body.age-young .critter { font-size: 2.5rem; }
     #screen-hub .loc-card { order: -1; }
     .world .cloud { opacity: .7; }
 }
+
+/* ---------- Results screen: compact, buttons always visible ---------- */
+.end-card { gap: 12px; padding: 18px 18px 0; }
+.end-top { display: flex; align-items: center; gap: 14px; }
+.end-top .end-mascot { flex: none; }
+.end-headline { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.end-headline h3 { font-size: clamp(1.3rem, 5vw, 1.7rem); font-weight: 800; }
+.end-headline .result-stars .icon { width: 30px; height: 30px; }
+.result-stars .on svg, .stars .on svg { fill: currentColor; }
+.end-strip { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; }
+.end-strip > div { display: grid; justify-items: center; padding: 8px 4px; }
+.end-strip > div + div { border-left: 1px solid var(--line); }
+.end-strip b { font-family: var(--display); font-size: 1.4rem; font-weight: 800; line-height: 1.1; }
+.xp-line { display: flex; justify-content: space-between; gap: 10px; font-size: .9rem; }
+.xp-bar .meter { margin-top: 4px; }
+.level-up {
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md);
+    background: var(--game-soft); border: 1px solid var(--game-line); font-size: .95rem;
+}
+.level-up .icon { color: var(--game); width: 22px; height: 22px; }
+.end-unlocks { display: grid; gap: 8px; }
+.end-unlocks:empty { display: none; }
+.end-unlocks .unlock { padding: 8px 10px; font-size: .9rem; }
+.end-unlocks .unlock .badge { width: 32px; height: 32px; border-radius: 10px; }
+.end-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.end-learned { border: 1px solid var(--game-line); background: var(--game-soft); border-radius: var(--r-md); }
+.end-learned summary { display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer; font-weight: 650; list-style: none; }
+.end-learned summary::-webkit-details-marker { display: none; }
+.end-learned summary::after { content: "▾"; margin-left: auto; color: var(--ink-3); transition: transform .2s; }
+.end-learned[open] summary::after { transform: rotate(180deg); }
+.end-learned summary .icon { color: var(--game); }
+.end-learned .learned { padding: 0 14px 12px 30px; }
+.end-actions {
+    position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
+    margin: 0 -18px; padding: 12px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--surface) 0%, transparent), var(--surface) 30%);
+}
+.end-actions .btn-primary { flex: 1 1 140px; }
+.level-chip:empty { display: none; }
+.game-head .level-chip { margin-bottom: 6px; }
+.level-pick { cursor: pointer; font: inherit; font-size: .78rem; font-weight: 650; }

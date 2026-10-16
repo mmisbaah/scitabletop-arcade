@@ -9,6 +9,11 @@ import { byDifficulty } from '../core/difficulty.js';
 import { isYoung, byAge, say } from '../core/age.js';
 import { germSVG } from '../core/art.js';
 import { flip, sprite, burst, shakeScreen, flash } from '../core/anim.js';
+import { currentLevel } from '../core/progress.js';
+
+let LEVEL = 1;
+// Extra waves for higher levels: everything at once.
+const BONUS_WAVE = ['STREP', 'SALMONELLA', 'INFLUENZA', 'E. COLI', 'RHINOVIRUS'];
 import { PATHOGENS, WAVES as ALL_WAVES, ABILITIES, BREACH_FACT, MEMORY_FACTS, IMMUNE_KID, AGE_TUNING, IMMUNE_CONFIG as CFG } from '../data/pathogens.js';
 
 let T = {};
@@ -30,7 +35,11 @@ function spawn(name) {
 
 export function init() {
     T = byAge(AGE_TUNING);
-    WAVES = ALL_WAVES.slice(0, T.waves ?? ALL_WAVES.length);
+    LEVEL = currentLevel('immune');
+    // Explorers get one more wave per level (up to 5); everyone else gets bonus waves on top of 5.
+    const base = Math.min(ALL_WAVES.length, (T.waves ?? ALL_WAVES.length) + (T.waves ? LEVEL - 1 : 0));
+    const bonus = T.waves ? 0 : Math.min(4, LEVEL - 1);
+    WAVES = [...ALL_WAVES.slice(0, base), ...Array(bonus).fill(BONUS_WAVE)];
     document.getElementById('screen-immune').classList.toggle('kid-mode', isYoung());
     state = {
         ap: apPerTurn(),
@@ -135,7 +144,7 @@ function spend(key) {
 
 // Pathogens past the bloodstream multiply: bacteria divide, viruses hijack cells.
 function grow() {
-    const chance = T.growth ?? byDifficulty(CFG.growthChance) * (T.growthScale ?? 1);
+    const chance = Math.min(0.8, (T.growth ?? byDifficulty(CFG.growthChance) * (T.growthScale ?? 1)) + 0.06 * (LEVEL - 1));
     for (const z of [1, 2]) {
         for (const p of [...state.zones[z]]) {
             if (state.zones[z].length >= CFG.zoneCap || Math.random() >= chance) continue;

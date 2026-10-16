@@ -17,6 +17,8 @@ Three age groups, picked on first launch and changeable from the top bar:
 | **Investigators (8–11)** | The real games, a bit gentler: 7 molecules to 100 points, 8 seasons, slower germ growth. |
 | **Scientists (12+)** | Full rules and the full difficulty range. |
 
+Every game has **levels**. Winning (or earning 2+ stars as an Explorer) unlocks the next, and each level is a bit harder: new molecules and hidden atom hints in Molecule Match, a higher target and smarter CPU in Alchemy, more seasons and disasters in Ecosystem, bonus waves and faster-growing germs in Immune, and a stronger CPU in Quantum chess. Pick any unlocked level from the map card.
+
 What every game has:
 - **Lab Notes**: a science fact for whatever just happened
 - **End screen**: your score, personal best, stats, and every fact you met that round

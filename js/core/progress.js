@@ -20,8 +20,11 @@ export const ACHIEVEMENTS = [
     { id: 'scholar', name: 'Scholar', desc: 'Collect 40 facts in your journal.', test: () => journalSize() >= 40 },
 ];
 
-const blank = () => ({ xp: 0, stars: {}, unlocked: [], journal: {} });
+const blank = () => ({ xp: 0, stars: {}, unlocked: [], journal: {}, levels: {}, playing: {} });
+export const MAX_LEVEL = 10;
 let data = { ...blank(), ...load('progress', {}) };
+data.levels ??= {};
+data.playing ??= {};
 const persist = () => save('progress', data);
 
 export const levelOf = (xp = data.xp) => Math.floor(xp / XP_PER_LEVEL) + 1;
@@ -41,6 +44,14 @@ export function collectFact(game, text) {
     return true;
 }
 
+// Levels: each game starts at level 1; passing a level unlocks the next.
+export const unlockedLevel = (game) => data.levels[game] ?? 1;
+export const currentLevel = (game) => Math.min(data.playing[game] ?? unlockedLevel(game), unlockedLevel(game));
+export function setCurrentLevel(game, n) {
+    data.playing[game] = Math.max(1, Math.min(n, unlockedLevel(game)));
+    persist();
+}
+
 // Stars: young players earn 1-3 for how well they did (and always 1 for
 // finishing). Everyone else gets 1 for a win, 2 on Normal, 3 on Hard.
 function starsForResult(result) {
@@ -58,9 +69,18 @@ export function recordResult(game, result) {
     const stars = starsForResult(result);
     data.stars[game] = Math.max(data.stars[game] ?? 0, stars);
 
+    // A win (or 2+ stars for young players) passes the level and unlocks the next one.
+    const level = currentLevel(game);
+    const passed = result.won && (!isYoung() || stars >= 2);
+    let unlocked = null;
+    if (passed && level >= unlockedLevel(game) && level < MAX_LEVEL) {
+        data.levels[game] = level + 1;
+        unlocked = level + 1;
+    }
+
     const newAchievements = ACHIEVEMENTS.filter((a) => !data.unlocked.includes(a.id) && a.test(game, result));
     data.unlocked.push(...newAchievements.map((a) => a.id));
     persist();
 
-    return { xpGained, stars, levelBefore, levelAfter: levelOf(), newAchievements };
+    return { xpGained, stars, levelBefore, levelAfter: levelOf(), newAchievements, level, passed, unlocked, nextLevel: passed && level < MAX_LEVEL ? level + 1 : null };
 }

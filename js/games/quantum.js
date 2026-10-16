@@ -9,6 +9,7 @@ import { settings, saveSettings } from '../core/storage.js';
 import { QUANTUM_FACTS, QUANTUM_KID } from '../data/quantum-data.js';
 import { isYoung, say } from '../core/age.js';
 import { flip, burst, ripple } from '../core/anim.js';
+import { currentLevel } from '../core/progress.js';
 
 // Facts in the right words for the player's age group.
 const F = new Proxy({}, { get: (_, key) => say(QUANTUM_FACTS[key], QUANTUM_KID[key]) });
@@ -106,7 +107,9 @@ function play(move) {
 
 function cpuMove() {
     if (!cpuToMove()) return;
-    const level = isYoung() ? 0 : byDifficulty({ easy: 0, normal: 1, hard: 2 });
+    // Each level makes the CPU one step stronger, up to its best.
+    const L = currentLevel('quantum') - 1;
+    const level = Math.min(2, (isYoung() ? 0 : byDifficulty({ easy: 0, normal: 1, hard: 2 })) + L);
     let move = chooseMove(state.pos, level);
     if (!move) return;
     // Picking up a superposed electron measures it first, then the CPU re-plans.

@@ -9,6 +9,9 @@ import { isYoung, byAge, say } from '../core/age.js';
 import { moleculeSVG } from '../core/art.js';
 import { confetti } from '../core/confetti.js';
 import { flyFrom, sprite, burst } from '../core/anim.js';
+import { currentLevel } from '../core/progress.js';
+
+let LEVEL = 1;
 
 // Effects that need the freshly rendered DOM run right after the next render.
 const fx = [];
@@ -92,7 +95,9 @@ export function init() {
     $('chem-you-label').textContent = isYoung() ? 'Molecules made' : 'You';
     if (isYoung()) return initKid();
     RECIPES = byAge({ middle: ALL_RECIPES.slice(0, 7), teen: ALL_RECIPES });
-    WIN_SCORE = byAge({ middle: 100, teen: FULL_WIN });
+    LEVEL = currentLevel('chemistry');
+    // Each level raises the target score by 25.
+    WIN_SCORE = Math.min(300, byAge({ middle: 100, teen: FULL_WIN }) + 25 * (LEVEL - 1));
     $('chem-goal').textContent = `Goal ${WIN_SCORE}`;
     state = {
         p1: 0,
@@ -231,7 +236,8 @@ function cpuTurn() {
 
 // CPU strategy depends on difficulty.
 function cpuAct() {
-    const level = byDifficulty({ easy: 0, normal: 1, hard: 2 });
+    // The CPU gets one step smarter every two levels.
+    const level = Math.min(2, byDifficulty({ easy: 0, normal: 1, hard: 2 }) + Math.floor((LEVEL - 1) / 2));
     const counts = countAtoms(state.cpuHand);
     const buildable = RECIPES.filter((r) => canBuild(counts, r)).sort((a, b) => valueOf(b) - valueOf(a));
 
@@ -406,7 +412,11 @@ const actions = {
 // atoms the target molecule needs. Empty circles on the bench show what's left.
 
 function initKid() {
-    const targets = KID_ORDER.slice(0, KID_ROUNDS);
+    LEVEL = currentLevel('chemistry');
+    // Level 1: the easy six. Level 2: trickier molecules. Level 3+: a random mix, and the empty slots stop telling you which atom goes where.
+    const targets = LEVEL === 1 ? KID_ORDER.slice(0, KID_ROUNDS)
+        : LEVEL === 2 ? ['N2', 'CH4', 'NH3', 'H2O', 'NaOH', 'CO2']
+        : [...KID_ORDER, 'NaOH', 'N2'].sort(() => Math.random() - 0.5).slice(0, KID_ROUNDS);
     state = { kid: true, targets, round: 0, bench: [], hand: [], mistakes: 0, streak: 0, made: 0, over: false };
     clearLog('chem-log', 'Molecule Match started.');
     resetFacts('chemistry', 'Atoms hold hands to make molecules. The dots on each atom show how many hands it has!');
@@ -419,7 +429,7 @@ function dealKid() {
     const target = kidTarget();
     const needed = Object.entries(target.atoms).flatMap(([a, n]) => Array(n).fill(a));
     const decoys = Object.keys(VALENCE).filter((a) => !target.atoms[a]);
-    const extras = [pick(decoys), pick(decoys)];
+    const extras = Array.from({ length: Math.min(4, 1 + LEVEL) }, () => pick(decoys));
     state.hand = [...needed, ...extras].sort(() => Math.random() - 0.5);
     state.bench = [];
     renderKid();
@@ -441,7 +451,9 @@ function renderKid() {
     const counts = countAtoms(state.bench);
     const missingAtoms = Object.entries(target.atoms).flatMap(([a, n]) => Array(Math.max(0, n - (counts[a] || 0))).fill(a));
     $('chem-bench-slots').innerHTML = state.bench.map((a, i) => atomCard(a, 'unbench', i, 'on-bench'))
-        .concat(missingAtoms.map((a) => `<span class="atom-slot" style="--el:var(--el-${a})"><span>${a}</span></span>`)).join('');
+        .concat(missingAtoms.map((a) => (LEVEL >= 3
+            ? '<span class="atom-slot" style="--el:var(--ink-3)"><span>?</span></span>'
+            : `<span class="atom-slot" style="--el:var(--el-${a})"><span>${a}</span></span>`))).join('');
 
     $('chem-hand').innerHTML = state.hand.map((a, i) => atomCard(a, 'bench', i)).join('');
     $('chem-p1').textContent = state.made;
