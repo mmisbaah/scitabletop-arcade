@@ -56,6 +56,8 @@ export const RULES = {
             'You have 3 AP per turn. Pick an ability, then click a pathogen (or a zone for B-Cells).',
             'MACROPHAGE (1 AP): 1 damage, 2 vs bacteria. T-CELL (2 AP): destroys any virus. B-CELL (2 AP): 1 damage to every pathogen in one zone.',
             'END TURN: pathogens in the Organ Core breach and deal damage equal to their HP x10. Everyone else moves one zone deeper and a new wave arrives.',
+            'Pathogens that get into the tissue or core can multiply: bacteria divide and viruses replicate. Stop them early.',
+            'MEMORY: a pathogen type you finish off with a T-Cell or B-Cell is remembered. Remembered pathogens arrive with 1 less HP, and Macrophages do +1 damage to them. Macrophage kills teach nothing.',
             'Survive 5 waves and clear the tracks to win. Organ health at 0 means game over.',
         ],
     },

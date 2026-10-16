@@ -33,7 +33,19 @@ export const ABILITIES = {
 
 export const BREACH_FACT = 'When pathogens get past the first defences you get inflammation: swelling, heat and fever. Many germs reproduce more slowly at higher temperatures.';
 
+export const MEMORY_FACTS = {
+    learned: 'Immune memory: after T-cells or B-cells beat a pathogen, some stay behind as memory cells. Next time that pathogen shows up, they react in hours instead of days.',
+    tagged: 'Opsonisation: antibodies coat a pathogen your body remembers, which makes it far easier for macrophages to grab and swallow.',
+    innate: 'Macrophages are innate immunity: they fight anything, but they do not learn. Only the adaptive system (T-cells and B-cells) builds memory.',
+    fission: 'Binary fission: a bacterium copies its DNA and splits in two. In good conditions E. coli can do it every 20 minutes.',
+    replicate: 'Viral replication: a virus injects its genes into one of your cells, which then builds hundreds of new viruses and bursts.',
+    vaccine: 'This is how vaccines work: they show your immune system a harmless piece of a pathogen so memory cells are ready before the real thing arrives.',
+};
+
 export const IMMUNE_CONFIG = {
-    apPerTurn: 3,
-    breachDamagePerHp: 10,
+    apPerTurn: { easy: 4, normal: 3, hard: 3 },
+    breachDamagePerHp: { easy: 8, normal: 10, hard: 15 },
+    // Chance per turn that a pathogen already inside the body copies itself.
+    growthChance: { easy: 0.2, normal: 0.35, hard: 0.6 },
+    zoneCap: 6,
 };
