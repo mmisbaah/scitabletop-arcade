@@ -225,15 +225,19 @@ button { font: inherit; color: inherit; }
     .level-pill .level-label { display: none; }
     .bottom-nav {
         display: grid; grid-template-columns: repeat(5, 1fr);
-        position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+        position: fixed; z-index: 40;
+        left: max(12px, env(safe-area-inset-left, 0px));
+        right: max(12px, env(safe-area-inset-right, 0px));
+        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
         background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(12px);
-        border-top: 1px solid var(--line);
-        padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+        border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow-2);
+        padding: 6px;
     }
-    .bottom-nav .tab { flex-direction: column; gap: 2px; font-size: 0.68rem; padding: 6px 2px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bottom-nav .tab { flex-direction: column; gap: 2px; font-size: 0.68rem; padding: 6px 2px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 14px; }
     .bottom-nav .tab .icon { width: 22px; height: 22px; color: var(--tab-color, var(--ink-2)); }
     .bottom-nav .tab .dot { display: none; }
-    main { padding-bottom: 84px; }
+    /* Room at the end of every screen so the floating tab bar never covers content. */
+    main.wrap { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ---------- layout ---------- */
@@ -566,7 +570,7 @@ main { padding-block: 24px 48px; }
     box-shadow: var(--shadow-2); transition: transform .3s var(--ease), opacity .2s; max-width: calc(100vw - 32px); text-align: center;
 }
 .toast.show { transform: translate(-50%, 0); opacity: 1; }
-@media (max-width: 760px) { .toast { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 760px) { .toast { bottom: calc(104px + env(safe-area-inset-bottom, 0px)); } }
 
 .modal { position: fixed; inset: 0; z-index: 80; background: var(--scrim); display: grid; place-items: center; padding: 16px; animation: fade .2s; }
 .modal[hidden] { display: none; }
@@ -577,8 +581,8 @@ main { padding-block: 24px 48px; }
 }
 @keyframes pop { from { transform: translateY(20px) scale(.97); opacity: 0; } }
 @media (max-width: 560px) {
-    .modal { place-items: end stretch; padding: 0; }
-    .modal-card { border-radius: var(--r-lg) var(--r-lg) 0 0; max-height: 92vh; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); animation: sheet .3s var(--ease); }
+    .modal { place-items: end stretch; padding: 12px max(12px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+    .modal-card { border: 1px solid var(--line); max-height: calc(100% - 24px); padding: 20px; animation: sheet .3s var(--ease); }
     @keyframes sheet { from { transform: translateY(40%); } }
 }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
