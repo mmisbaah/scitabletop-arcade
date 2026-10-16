@@ -11,7 +11,7 @@ import { AGES, ageGroup, isYoung, setAge } from './core/age.js';
 import { mascotSVG } from './core/art.js';
 import { speak, canSpeak } from './core/speech.js';
 import { reduced } from './core/anim.js';
-import { PLACES, renderWorld, walkTo, walkerAt, placeWalker } from './world/world.js';
+import { PLACES, renderWorld, walkTo, walkerAt, placeWalker, centerOnWalker } from './world/world.js';
 import * as chemistry from './games/chemistry.js';
 import * as ecosystem from './games/ecosystem.js';
 import * as immune from './games/immune.js';
@@ -179,15 +179,12 @@ function renderHub() {
     const unlocked = ACHIEVEMENTS.filter((a) => isUnlocked(a.id)).length;
     const stars = CARTRIDGES.reduce((t, c) => t + starsFor(c.key), 0);
     $('hub-profile').innerHTML = `
-        <div class="profile-top">
-            <span class="level-ring profile-level" style="--p:${Math.round(levelProgress() * 100)}">${levelOf()}</span>
-            <div><div class="eyebrow">Your lab level</div><b style="font-size:1.15rem">Level ${levelOf()} scientist</b>
-            <div class="muted num" style="font-size:.85rem">${totalXp()} XP total</div></div>
-        </div>
-        <div class="profile-stats">
-            <div><span class="eyebrow">Stars</span><b class="num">${stars}/12</b></div>
-            <div><span class="eyebrow">Badges</span><b class="num">${unlocked}/${ACHIEVEMENTS.length}</b></div>
-            <div><span class="eyebrow">Facts</span><b class="num">${journalSize()}</b></div>
+        <span class="level-ring profile-level" style="--p:${Math.round(levelProgress() * 100)}">${levelOf()}</span>
+        <div class="profile-meta"><b>Level ${levelOf()} scientist</b><span class="muted num">${totalXp()} XP</span></div>
+        <div class="profile-chips">
+            <span class="chip" title="Stars">⭐ <b class="num">${stars}/12</b></span>
+            <span class="chip" title="Facts in your journal">📖 <b class="num">${journalSize()}</b></span>
+            <button class="chip badge-btn" data-action="app:badges" title="Achievements">🏅 <b class="num">${unlocked}/${ACHIEVEMENTS.length}</b></button>
         </div>`;
 
     renderWorld($('world-wrap'), {
@@ -195,7 +192,8 @@ function renderHub() {
         avatar: AGES[ageGroup()].emoji,
     });
     renderLocCard(walkerAt());
-    $('hub-ach-count').textContent = `${unlocked} of ${ACHIEVEMENTS.length}`;
+    requestAnimationFrame(centerOnWalker);
+    $('hub-ach-count').textContent = `${unlocked} of ${ACHIEVEMENTS.length} unlocked`;
     $('hub-achievements').innerHTML = ACHIEVEMENTS.map((a) => `
         <div class="achievement ${isUnlocked(a.id) ? 'on' : ''}">
             <span class="badge">${icon(isUnlocked(a.id) ? 'award' : 'lock')}</span>
@@ -249,9 +247,7 @@ function applyAge() {
         head.querySelector('p').textContent = kid?.blurb ?? ORIGINAL_HEADS[c.key].p;
     }
     $('hero-title').innerHTML = isYoung() ? 'Play with <em>science!</em>' : 'Learn science by <em>outplaying</em> it.';
-    $('hero-text').textContent = isYoung()
-        ? 'Build molecules, feed a forest, bust germs and hop around a quantum board. Tap the speaker to hear things read out loud.'
-        : 'Balance molecules, keep a food web alive, hold off an infection and outwit a quantum opponent. Every move comes with the real science behind it.';
+    $('hero-text').textContent = isYoung() ? 'Tap a place on the island to walk there.' : 'Tap a place on the island to travel there and play.';
     refreshIcons();
 }
 
@@ -318,6 +314,8 @@ function applySettings() {
 }
 
 const APP_ACTIONS = {
+    badges: () => { $('badges-modal').hidden = false; },
+    'close-badges': () => { $('badges-modal').hidden = true; },
     visit: async (key) => {
         playSound('card');
         if (walkerAt() === key) return renderLocCard(key);
@@ -381,12 +379,16 @@ $('difficulty-select').addEventListener('change', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+    // Tap a lab note to read the whole thing.
+    const noteText = e.target.closest('.note-text');
+    if (noteText) noteText.closest('.note').classList.toggle('expanded');
     const el = e.target.closest('[data-action]');
     if (!el) {
         // B-Cell can target an empty patch of a lane.
         const zone = e.target.closest('[data-zone]');
         if (zone) immune.handleZoneClick(Number(zone.dataset.zone));
         if (e.target.id === 'rules-modal') closeRules();
+        if (e.target.id === 'badges-modal') $('badges-modal').hidden = true;
         return;
     }
     const [scope, action] = el.dataset.action.split(':');
@@ -398,6 +400,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         if (settings.age) $('age-modal').hidden = true;
+        $('badges-modal').hidden = true;
         closeRules();
         hideEnd();
     }
@@ -405,6 +408,12 @@ document.addEventListener('keydown', (e) => {
 
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', applySettings);
 window.addEventListener('hashchange', () => go(location.hash.slice(1), { push: false }));
+
+// The one-screen layout sizes itself from the real top-bar height.
+const syncBar = () => document.documentElement.style.setProperty('--bar-h', `${document.querySelector('.app-bar').offsetHeight}px`);
+syncBar();
+window.addEventListener('resize', syncBar);
+document.fonts?.ready.then(syncBar);
 
 document.body.classList.toggle('can-speak', canSpeak());
 document.querySelectorAll('.mascot-slot').forEach((el) => { el.innerHTML = mascotSVG(56); });

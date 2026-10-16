@@ -965,3 +965,283 @@ body.age-young .critter { font-size: 2.5rem; }
 .level-chip:empty { display: none; }
 .game-head .level-chip { margin-bottom: 6px; }
 .level-pick { cursor: pointer; font: inherit; font-size: .78rem; font-weight: 650; }
+
+/* ===================================================================
+   One-screen layout: every screen fits the window. The page never
+   scrolls; if a list runs long, only that panel scrolls.
+   =================================================================== */
+
+:root { --bar-h: 61px; --nav-h: 0px; }
+@media (max-width: 760px) { :root { --nav-h: 86px; } }
+
+html, body { height: 100%; }
+body { overflow: hidden; }
+main.wrap {
+    height: calc(100dvh - var(--bar-h) - env(safe-area-inset-top, 0px) - var(--nav-h) - env(safe-area-inset-bottom, 0px));
+    padding-block: 12px !important;
+    overflow: hidden;
+}
+.screen {
+    height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 10px;
+    overflow-y: auto; overscroll-behavior: contain; animation: none;
+}
+.screen > * { flex: none; }
+.screen > .layout, .screen > .world-stage { flex: 1 1 auto; min-height: 0; }
+.log-panel { display: none !important; }
+
+/* Header: one row with title, level and icon buttons. */
+.game-head { flex-wrap: nowrap; align-items: center; gap: 10px; }
+.game-head > div:first-child { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.game-head > div:first-child > .eyebrow { margin: 0; flex-basis: 100%; }
+.game-head h2 { font-size: clamp(1.15rem, 2.4vw, 1.6rem); }
+.game-head p { display: none; }
+.game-head .level-chip { margin: 0; }
+.game-head .actions { flex-wrap: nowrap; gap: 6px; }
+.game-head .actions .btn { min-height: 38px; padding: 0 12px; font-size: .88rem; }
+
+/* Stats: a slim strip. */
+.hud { display: flex; gap: 8px; overflow-x: auto; }
+.hud .stat { flex: 1 1 0; min-width: 92px; padding: 6px 12px; border-radius: 12px; gap: 0; }
+.hud .stat .eyebrow { font-size: .62rem; }
+.hud .stat-value { font-size: 1.2rem; }
+.hud .meter { height: 5px; margin-top: 3px; }
+.hud .stat > .muted { font-size: .75rem; }
+.kid-mode .hud { display: flex; }
+
+/* Lab notes: two lines; tap to read the rest. */
+.note { padding: 8px 12px; gap: 10px; align-items: center; }
+.note .note-icon.mascot-slot { width: 40px; height: 40px; }
+.note .note-icon.mascot-slot svg { width: 40px; height: 40px; }
+.note-title { display: none; }
+.note.is-new { box-shadow: 0 0 0 2px var(--game-line); }
+.note-text { font-size: .93rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+.note.expanded .note-text { -webkit-line-clamp: unset; display: block; }
+body.age-young .note-text { font-size: 1rem; }
+.note .read-btn { width: 36px; height: 36px; }
+
+/* Play area */
+.layout { align-items: stretch; gap: 12px; }
+.layout > *, .layout .stack { min-height: 0; }
+.layout > .panel, .layout > aside, .layout > .stack { overflow-y: auto; overscroll-behavior: contain; }
+.layout .stack { gap: 10px; }
+.layout .panel { padding: 12px 14px; }
+.panel-head { margin-bottom: 8px; }
+.panel-head h3 { font-size: 1rem; }
+
+/* ----- Alchemy ----- */
+#screen-chemistry .layout.rail-left { grid-template-columns: 250px minmax(0, 1fr); }
+.recipe-list { max-height: none; gap: 6px; }
+.recipe { padding: 6px 8px; }
+.recipe-art { width: 44px; }
+.recipe-art .molecule { max-width: 44px; }
+.bench { min-height: 0; padding: 12px; gap: 10px; }
+.bench-slots { min-height: 64px; }
+.tray { min-height: 0; gap: 8px; }
+.tray-label { margin-bottom: 6px; }
+.kid-target { padding: 10px 14px; gap: 14px; flex-wrap: nowrap; }
+.kid-target .target-art { min-width: 110px; min-height: 80px; padding: 6px; }
+.kid-target .target-art .molecule { max-width: 140px; max-height: 90px; }
+.kid-target h3 { font-size: clamp(1.15rem, 3vw, 1.6rem); }
+
+/* ----- Ecosystem ----- */
+#screen-ecosystem .layout { grid-template-columns: minmax(0, 1fr) 260px; }
+#screen-ecosystem .layout > .stack { display: flex; flex-direction: column; overflow: hidden; }
+
+.scene { height: clamp(120px, 22vh, 210px); flex: none; }
+body.age-young .scene { height: clamp(130px, 24vh, 230px); }
+.web { flex: 1 1 auto; min-height: 0; }
+.tier { min-height: 0; overflow-y: auto; padding: 10px; }
+.organism { padding: 5px 8px; }
+.organism .emoji { font-size: 1.15rem; }
+.hand { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+.species-card { flex: none; width: 118px; min-height: 0; padding: 8px 10px; }
+.species-card .emoji { font-size: 1.5rem; }
+.species-card small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.age-young .species-card { width: 128px; }
+body.age-young .species-card .emoji { font-size: 1.9rem; }
+
+/* ----- Immune ----- */
+#screen-immune .layout { grid-template-columns: minmax(0, 1fr) 270px; }
+.tracks { gap: 8px; }
+.lane { min-height: 62px; padding: 6px; }
+.pathogen { padding: 5px 8px; min-width: 104px; }
+.ability { padding: 8px 10px; gap: 10px; }
+.ability .glyph { width: 34px; height: 34px; font-size: 1.1rem; }
+
+/* ----- Quantum ----- */
+#screen-quantum .layout { grid-template-columns: minmax(0, 1fr) 260px; }
+#screen-quantum .layout > .panel { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.board { width: min(100%, calc(100dvh - var(--bar-h) - var(--nav-h) - 250px)); max-width: 620px; }
+.turn-banner { margin-bottom: 8px; min-height: 0; }
+.legend-row small { font-size: .78rem; }
+
+/* ----- Map ----- */
+.hub-screen { gap: 10px; }
+.hub-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hub-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.hub-title h1 { font-size: clamp(1.25rem, 2.8vw, 2rem); }
+.hub-title p { color: var(--ink-2); font-size: .9rem; margin-top: 2px; }
+.hub-title .hero-mascot { float: none; margin: 0; display: block; }
+.hub-title .hero-mascot svg { width: 52px; height: 52px; }
+.profile { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 16px; }
+.profile .profile-level { width: 42px; height: 42px; font-size: 1rem; }
+.profile-meta { display: grid; line-height: 1.2; font-size: .9rem; }
+.profile-chips { display: flex; gap: 6px; }
+.badge-btn { cursor: pointer; font: inherit; font-size: .78rem; font-weight: 650; }
+.world-stage { position: relative; display: grid; place-items: start center; }
+.world-wrap { width: min(100%, calc((100dvh - var(--bar-h) - var(--nav-h) - 110px) * 5 / 3)); }
+.loc-card {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 5;
+    width: min(720px, calc(100% - 24px)); grid-template-columns: 96px minmax(0, 1fr) auto; gap: 14px; padding: 10px 12px; box-shadow: var(--shadow-2);
+}
+.loc-card .loc-art { height: 76px; }
+.loc-card h3 { font-size: 1.2rem; }
+.loc-card .loc-info p { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; font-size: .9rem; }
+.loc-card .game-meta { margin-top: 0; }
+.loc-card .loc-actions .btn { min-height: 38px; }
+
+/* ----- Phones ----- */
+@media (max-width: 760px) {
+    main.wrap { padding-bottom: 8px !important; padding-top: 8px !important; }
+    .screen { gap: 8px; }
+    .game-head > div:first-child > .eyebrow { display: none; }
+    .game-head .actions .btn { font-size: 0; gap: 0; width: 38px; padding: 0; }
+    .game-head .actions .btn .icon { width: 19px; height: 19px; }
+    .hud .stat { min-width: 76px; padding: 5px 8px; }
+    .hud .stat-value { font-size: 1.05rem; }
+    .note { padding: 6px 10px; }
+    .note .note-icon.mascot-slot, .note .note-icon.mascot-slot svg { width: 34px; height: 34px; }
+    .note-text { font-size: .86rem; }
+    .layout .panel { padding: 10px; }
+
+    /* Alchemy: recipes become a strip at the bottom. */
+    #screen-chemistry .layout.rail-left { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    #screen-chemistry .layout.rail-left > aside { order: 2; overflow: hidden; padding: 8px 10px; }
+    #screen-chemistry .layout.rail-left > aside .panel-head { display: none; }
+    .recipe-list { flex-direction: row; display: flex; overflow-x: auto; }
+    .recipe { flex: none; min-width: 132px; }
+    .recipe-sub { display: none; }
+    .atom { width: 50px; height: 58px; }
+    .atom-sym { font-size: 1.2rem; }
+    body.age-young .atom { width: 62px; height: 72px; }
+    body.age-young .atom-sym { font-size: 1.5rem; }
+    .atom-slot { width: 50px; height: 58px; }
+    body.age-young .atom-slot { width: 62px; height: 72px; }
+    .tray-label .muted { display: none; }
+    .kid-target .target-art { min-width: 90px; min-height: 66px; }
+    .kid-target .target-art .molecule { max-width: 110px; max-height: 66px; }
+    .kid-target .target-text p { display: none; }
+
+    /* Ecosystem: scene, food web, reserves, then the season button. */
+    #screen-ecosystem .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    #screen-ecosystem .layout > aside { overflow: visible; }
+    #screen-ecosystem .layout > aside .panel { padding: 0; border: 0; background: none; }
+    #screen-ecosystem .layout > aside .panel-head, #screen-ecosystem .kv { display: none; }
+    #screen-ecosystem .layout > aside .btn { margin-top: 0 !important; }
+    .web { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .tier { padding: 6px; gap: 5px; border-top-width: 3px; }
+    .tier-head b { font-size: .8rem; }
+    .tier-food { font-size: .68rem; }
+    .organism { padding: 4px 5px; gap: 4px; }
+    .organism .name { font-size: .7rem; }
+    .organism .val { display: none; }
+    .species-card { width: 104px; }
+    .species-card small { font-size: .68rem; }
+
+    /* Immune: lanes, then the three cells side by side. */
+    #screen-immune .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+    #screen-immune .layout > aside { overflow: visible; }
+    #screen-immune .layout > aside > .panel:not(:first-child) { display: none; }
+    #screen-immune .layout > aside > .panel:first-child { padding: 0; border: 0; background: none; }
+    #screen-immune .layout > aside .panel-head { display: none; }
+    #immune-abilities { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px !important; }
+    .ability { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 6px 4px; gap: 2px; }
+    .ability small { display: none; }
+    .ability b { font-size: .78rem; }
+    .ability .glyph { width: 30px; height: 30px; }
+    #screen-immune .layout > aside .btn-block { margin-top: 8px !important; }
+    .track { grid-template-columns: 62px minmax(0, 1fr); gap: 6px; }
+    .track-label small { display: none; }
+    .track-label b { font-size: .75rem; }
+    .lane { min-height: 56px; }
+    .pathogen { min-width: 84px; padding: 4px 6px; column-gap: 4px; }
+    .pathogen .germ { width: 30px; height: 30px; }
+    .pathogen .kind { display: none; }
+    .pathogen b { font-size: .72rem; }
+
+    /* Quantum: the board takes the screen. */
+    #screen-quantum .layout { grid-template-columns: minmax(0, 1fr); }
+    #screen-quantum .layout > aside { display: none; }
+    #screen-quantum .layout > .panel { padding: 8px; }
+    .board { width: min(100%, calc(100dvh - var(--bar-h) - var(--nav-h) - 190px)); }
+    .turn-banner { font-size: .85rem; }
+
+    /* Map: island first, card underneath. */
+    .hub-title p, .profile-meta, .hub-title .eyebrow { display: none; }
+    .hub-title h1 { font-size: 1.15rem; }
+    .hub-title .hero-mascot { display: none; }
+    .profile { padding: 4px 8px; gap: 6px; }
+    .profile .profile-level { width: 34px; height: 34px; font-size: .85rem; }
+    .profile-chips .chip { padding: 2px 7px; }
+    .world-stage { display: flex; flex-direction: column; gap: 8px; }
+    .world-wrap { width: 100%; }
+    .loc-card { position: static; transform: none; width: 100%; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px; }
+    .loc-card .loc-art, .loc-card .loc-info p { display: none; }
+    .loc-card h3 { font-size: 1.05rem; }
+    .loc-actions { grid-template-columns: 1fr 1fr; }
+}
+#screen-ecosystem .web-panel { flex: 1 1 0; min-height: 90px; display: flex; flex-direction: column; overflow: hidden; }
+#screen-ecosystem .web-panel .web { flex: 1 1 0; min-height: 0; }
+#screen-ecosystem .hand-panel { flex: none; }
+@media (max-width: 760px) {
+    #screen-ecosystem .hand-panel { padding: 8px 10px; }
+    #screen-ecosystem .hand-panel .panel-head { margin-bottom: 4px; }
+    #screen-ecosystem .hand-panel .panel-head .muted { display: none; }
+    #screen-ecosystem .web-panel .panel-head .muted { display: none; }
+}
+@media (max-width: 760px) {
+    /* The island fills the height and slides sideways; it follows the walker. */
+    .world-wrap { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border-radius: var(--r-lg); scrollbar-width: none; }
+    .world-wrap::-webkit-scrollbar { display: none; }
+    .world { width: max(100%, calc((100dvh - var(--bar-h) - var(--nav-h) - 250px) * 5 / 3)); }
+}
+
+/* Ecosystem: reserves live in the side column on wide screens. */
+#screen-ecosystem .layout > aside { display: flex; flex-direction: column; gap: 10px; }
+#screen-ecosystem .layout > aside .hand-panel { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#screen-ecosystem .layout > aside .hand-panel .panel-head .muted { display: none; }
+#screen-ecosystem .layout > aside .hand { flex-wrap: wrap; overflow: visible; }
+#screen-ecosystem .layout > aside .species-card { width: calc(50% - 5px); }
+.scene { height: clamp(110px, 19vh, 190px); }
+body.age-young .scene { height: clamp(120px, 21vh, 210px); }
+@media (max-width: 760px) {
+    .scene, body.age-young .scene { height: clamp(90px, 15vh, 130px); }
+    #screen-ecosystem .layout > aside { gap: 6px; }
+    #screen-ecosystem .layout > aside .hand-panel { order: 1; flex: none; overflow: visible; padding: 6px 8px; }
+    #screen-ecosystem .layout > aside > .panel:first-child { order: 2; }
+    #screen-ecosystem .layout > aside .hand { flex-wrap: nowrap; overflow-x: auto; }
+    #screen-ecosystem .layout > aside .species-card { width: 100px; }
+    #screen-ecosystem .layout > aside .hand-panel .panel-head { display: none; }
+}
+/* Stacked panels keep their natural height; the stack scrolls instead of squashing them. */
+.layout .stack { align-content: start; grid-auto-rows: max-content; }
+#screen-ecosystem .layout > .stack, #screen-ecosystem .layout > aside { grid-auto-rows: unset; }
+@media (max-width: 760px) {
+    /* Phones already have Map in the bottom bar. */
+    .game-head .actions [data-action="app:go"][data-arg="hub"] { display: none; }
+    .game-head h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+@media (min-width: 761px) {
+    /* Bench in one row: atoms on the left, buttons on the right. */
+    #screen-chemistry .bench { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 96px; }
+    #screen-chemistry .bench .bench-slots { flex: 1; justify-content: flex-start; min-height: 72px; }
+    #screen-chemistry .bench .actions { flex-direction: column; flex-wrap: nowrap; }
+    #screen-chemistry.kid-mode .bench .bench-slots { justify-content: center; }
+}
+@media (min-width: 1100px) {
+    /* Market and your atoms side by side. */
+    #screen-chemistry .layout > .stack { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); }
+    #screen-chemistry .layout > .stack > .bench, #screen-chemistry .layout > .stack > .kid-target { grid-column: 1 / -1; }
+    #screen-chemistry.kid-mode .layout > .stack > .panel { grid-column: 1 / -1; }
+    #screen-chemistry .tray-label .muted { display: none; }
+}

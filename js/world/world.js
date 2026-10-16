@@ -143,6 +143,19 @@ export function renderWorld(container, { info, onSelect, avatar }) {
     void onSelect;
 }
 
+// On phones the island is wider than the screen; keep the walker in view.
+function follow(x, smooth = false) {
+    const wrap = document.getElementById('world-wrap');
+    const world = document.getElementById('world');
+    if (!wrap || !world || world.offsetWidth <= wrap.clientWidth) return;
+    const left = (x / 1000) * world.offsetWidth - wrap.clientWidth / 2;
+    wrap.scrollTo({ left, behavior: smooth ? 'smooth' : 'auto' });
+}
+
+export function centerOnWalker() {
+    follow(PLACES[walker.at].x);
+}
+
 function pointOn(pathEl, t, reverse) {
     const len = pathEl.getTotalLength();
     return pathEl.getPointAtLength(reverse ? len * (1 - t) : len * t);
@@ -163,6 +176,7 @@ function walkPath(key, reverse) {
             const pt = pointOn(pathEl, e, reverse);
             el.style.left = `${pt.x / 10}%`;
             el.style.top = `${pt.y / 6}%`;
+            follow(pt.x);
             if (lastX !== null && Math.abs(pt.x - lastX) > 0.2) el.classList.toggle('face-left', pt.x < lastX);
             lastX = pt.x;
             if (t < 1) requestAnimationFrame(step);

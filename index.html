@@ -38,22 +38,22 @@
 <main class="wrap">
 
     <!-- HUB -->
-    <section id="screen-hub" class="screen">
-        <div class="hero">
-            <div>
+    <section id="screen-hub" class="screen hub-screen">
+        <div class="hub-bar">
+            <div class="hub-title">
                 <div class="hero-mascot" id="hero-mascot"></div>
-                <div class="eyebrow">Welcome to Science Island</div>
-                <h1 id="hero-title">Learn science by <em>outplaying</em> it.</h1>
-                <p id="hero-text">Balance molecules, keep a food web alive, hold off an infection and outwit a quantum opponent. Every move comes with the real science behind it.</p>
+                <div>
+                    <div class="eyebrow">Welcome to Science Island</div>
+                    <h1 id="hero-title">Learn science by <em>outplaying</em> it.</h1>
+                    <p id="hero-text"></p>
+                </div>
             </div>
             <div class="profile" id="hub-profile"></div>
         </div>
-
-        <div class="world-wrap" id="world-wrap"></div>
-        <div class="loc-card" id="loc-card" aria-live="polite"></div>
-
-        <div class="panel-head"><h2 style="font-size:1.4rem">Achievements</h2><span class="chip" id="hub-ach-count"></span></div>
-        <div class="achievement-list" id="hub-achievements"></div>
+        <div class="world-stage">
+            <div class="world-wrap" id="world-wrap"></div>
+            <div class="loc-card" id="loc-card" aria-live="polite"></div>
+        </div>
     </section>
 
     <!-- GAME 1: ALCHEMY -->
@@ -124,7 +124,7 @@
                     <p class="muted adv" style="font-size:.85rem;margin-top:10px">Tap an atom or drag it onto the bench. The dots show how many bonds it makes.</p>
                 </div>
 
-                <div class="panel adv">
+                <div class="panel adv log-panel">
                     <div class="panel-head"><h3>Match log</h3></div>
                     <div class="log" id="chem-log"></div>
                 </div>
@@ -167,7 +167,7 @@
         <div class="layout">
             <div class="stack">
                 <div class="scene" id="eco-scene" aria-label="Picture of your habitat"></div>
-                <div class="panel">
+                <div class="panel web-panel">
                     <div class="panel-head"><h3>Food web</h3><span class="muted" style="font-size:.85rem">Tap a tile to remove it (1 play)</span></div>
                     <div class="web">
                         <div class="tier producer">
@@ -184,10 +184,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="panel">
-                    <div class="panel-head"><h3>Reserve species</h3><span class="muted" style="font-size:.85rem">Tap a card to release it (1 play)</span></div>
-                    <div class="hand" id="eco-hand"></div>
-                </div>
+
             </div>
 
             <aside class="stack">
@@ -200,7 +197,11 @@
                     </dl>
                     <button class="btn btn-primary btn-block" style="margin-top:16px" data-action="ecosystem:season">Next season<i data-icon="play" class="icon"></i></button>
                 </div>
-                <div class="panel adv">
+                <div class="panel hand-panel">
+                    <div class="panel-head"><h3>Reserve species</h3><span class="muted" style="font-size:.85rem">Tap a card to release it (1 play)</span></div>
+                    <div class="hand" id="eco-hand"></div>
+                </div>
+                <div class="panel adv log-panel">
                     <div class="panel-head"><h3>Season log</h3></div>
                     <div class="log" id="eco-log"></div>
                 </div>
@@ -268,7 +269,7 @@
                     <div class="panel-head"><h3>Immune memory</h3></div>
                     <div id="immune-memory"></div>
                 </div>
-                <div class="panel adv">
+                <div class="panel adv log-panel">
                     <div class="panel-head"><h3>Battle log</h3></div>
                     <div class="log" id="immune-log"></div>
                 </div>
@@ -318,7 +319,7 @@
                         <div class="legend-row"><span class="piece W">A</span><div><b>Atom</b><small>Your king: moves 1 square. When excited (gold dot) it moves up to 2 and re-emits the photon.</small></div></div>
                     </div>
                 </div>
-                <div class="panel adv">
+                <div class="panel adv log-panel">
                     <div class="panel-head"><h3>Move log</h3></div>
                     <div class="log" id="quantum-log"></div>
                 </div>
@@ -340,6 +341,17 @@
         </div>
         <ol class="rules-list" id="modal-content"></ol>
         <div class="modal-actions"><button class="btn btn-primary" data-action="app:close-rules">Got it</button></div>
+    </div>
+</div>
+
+<!-- Badges -->
+<div class="modal" id="badges-modal" hidden role="dialog" aria-modal="true" aria-labelledby="badges-title">
+    <div class="modal-card">
+        <div class="modal-head">
+            <div><div class="eyebrow" id="hub-ach-count"></div><h3 id="badges-title">Achievements</h3></div>
+            <button class="icon-btn" data-action="app:close-badges" aria-label="Close"><i data-icon="x" class="icon"></i></button>
+        </div>
+        <div class="achievement-list" id="hub-achievements"></div>
     </div>
 </div>
 
