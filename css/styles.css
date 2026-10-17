@@ -1262,3 +1262,9 @@ body.age-young .scene { height: clamp(120px, 21vh, 210px); }
     .loc-card .loc-actions .btn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline: 10px; }
 }
 @media (max-width: 420px) { .enter-place { display: none; } }
+
+/* Alchemy: half-way through a market turn */
+#chem-market-panel.is-picking { border-color: var(--game); box-shadow: 0 0 0 3px color-mix(in srgb, var(--game) 25%, transparent); }
+#chem-market-panel.is-picking #chem-market-hint { color: var(--ink); display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#chem-market-panel.is-picking #chem-market-hint .btn { min-height: 30px; padding: 0 10px; }
+.btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }

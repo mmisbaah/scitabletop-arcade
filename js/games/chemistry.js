@@ -111,6 +111,7 @@ export function init() {
         made: { YOU: 0, CPU: 0 },
         trading: false, // TRADE armed: next hand click swaps that card
         picks: 0,       // market atoms taken so far this turn (2 ends the turn)
+        lastPick: null, // { i, atom } so the first pick can be undone
         over: false,
     };
     clearLog('chem-log', 'Lab open. Build a molecule, take from the market, or draw.');
@@ -160,6 +161,14 @@ function render() {
         : state.bench.map((a, i) => atomCard(a, 'unbench', i, 'on-bench')).join('');
 
     $('chem-market').innerHTML = state.market.map((a, i) => atomCard(a, 'take', i)).join('');
+
+    // Half-way through a market turn: say so, lock the other moves, offer Undo.
+    const picking = state.picks > 0;
+    $('chem-market-panel').classList.toggle('is-picking', picking);
+    $('chem-market-hint').innerHTML = picking
+        ? `<b>Pick 1 more</b> to end your turn <button class="btn btn-sm" data-action="chemistry:undo">Undo pick</button>`
+        : 'Shared with the CPU. Pick 2 to use your turn.';
+    for (const id of ['chem-synth-btn', 'chem-draw-btn', 'chem-trade-btn']) $(id).disabled = picking;
 
     $('chem-hand').innerHTML = state.hand
         .map((a, i) => atomCard(a, 'bench', i, state.trading ? 'is-trade' : ''))
@@ -287,6 +296,7 @@ function cpuAct() {
 
 function endPlayerTurn() {
     state.picks = 0;
+    state.lastPick = null;
     if (checkWinner()) return render();
     cpuTurn();
     state.turn += 1;
@@ -353,6 +363,7 @@ const actions = {
         });
         const atom = takeFromMarket(state.hand, i, true);
         state.picks += 1;
+        state.lastPick = { i, atom };
         playSound('card');
         teach('chemistry', ATOM_FACTS[atom]);
         logTo('chem-log', `You took ${atom} from the market.`);
@@ -361,6 +372,22 @@ const actions = {
             return render();
         }
         endPlayerTurn();
+    },
+
+    // Put the first market pick back, so the turn can be spent another way.
+    undo() {
+        const pick = state.lastPick;
+        if (!state.picks || !pick) return;
+        const from = state.hand.lastIndexOf(pick.atom) >= 0 ? state.hand : state.bench;
+        const at = from.lastIndexOf(pick.atom);
+        if (at < 0) return;
+        from.splice(at, 1);
+        state.market[pick.i] = pick.atom;
+        state.picks = 0;
+        state.lastPick = null;
+        playSound('card');
+        logTo('chem-log', `You put ${pick.atom} back.`);
+        render();
     },
 
     synthesize() {
@@ -529,7 +556,7 @@ export function handle(action, arg) {
     // Half-way through a market turn, only a second market pick (or bench moves) is allowed.
     if (state.picks > 0 && ['synthesize', 'draw', 'trade'].includes(action)) {
         playSound('error');
-        showToast('Finish your turn: pick one more atom');
+        showToast('You took 1 market atom. Pick 1 more, or tap Undo pick to do something else.');
         return;
     }
     const fn = actions[action];

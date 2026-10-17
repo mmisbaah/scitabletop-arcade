@@ -99,15 +99,15 @@
                     <div class="built-pop" id="chem-built" hidden></div>
                     <div class="bench-slots" id="chem-bench-slots"></div>
                     <div class="actions adv">
-                        <button class="btn btn-primary" data-action="chemistry:synthesize"><i data-icon="sparkles" class="icon"></i>Synthesize</button>
+                        <button class="btn btn-primary" data-action="chemistry:synthesize" id="chem-synth-btn"><i data-icon="sparkles" class="icon"></i>Synthesize</button>
                         <button class="btn" data-action="chemistry:clear">Clear bench</button>
                     </div>
                 </div>
 
-                <div class="panel adv">
+                <div class="panel adv" id="chem-market-panel">
                     <div class="tray-label">
                         <h3 style="font-size:1.05rem">Atom market</h3>
-                        <span class="muted">Shared with the CPU. Pick 2 to use your turn.</span>
+                        <span class="muted" id="chem-market-hint">Shared with the CPU. Pick 2 to use your turn.</span>
                     </div>
                     <div class="tray" id="chem-market"></div>
                 </div>
@@ -116,7 +116,7 @@
                     <div class="tray-label">
                         <h3 style="font-size:1.05rem"><span class="adv">Your atoms</span><span class="kid-only">Tap an atom</span> <span class="muted num adv" id="chem-hand-count"></span></h3>
                         <div class="actions adv">
-                            <button class="btn btn-sm btn-soft" data-action="chemistry:draw">Draw 2</button>
+                            <button class="btn btn-sm btn-soft" data-action="chemistry:draw" id="chem-draw-btn">Draw 2</button>
                             <button class="btn btn-sm" data-action="chemistry:trade" id="chem-trade-btn">Trade one</button>
                         </div>
                     </div>
