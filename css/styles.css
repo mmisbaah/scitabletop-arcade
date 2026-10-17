@@ -1200,11 +1200,17 @@ body.age-young .species-card .emoji { font-size: 1.9rem; }
     #screen-ecosystem .web-panel .panel-head .muted { display: none; }
 }
 @media (max-width: 760px) {
-    /* The island fills the height and slides sideways; it follows the walker. */
-    .world-wrap { width: 100%; overflow-x: auto; overscroll-behavior-x: contain; border-radius: var(--r-lg); scrollbar-width: none; }
-    .world-wrap::-webkit-scrollbar { display: none; }
-    .world { width: max(100%, calc((100dvh - var(--bar-h) - var(--nav-h) - 250px) * 5 / 3)); }
+    /* Phones get the tall island, sized to whatever height is left, so the whole map shows. */
+    #screen-hub .world-stage { flex: 1 1 auto; min-height: 0; }
+    #screen-hub .world-wrap { flex: 1 1 0; min-height: 0; width: 100%; margin-inline: 0; display: grid; place-items: center; container-type: size; }
+    #screen-hub .world { width: min(100cqw, 100cqh * 3 / 4); }
 }
+.world.tall .boat { animation-name: sailTall; }
+@keyframes sailTall { from { transform: translate(-80px, 40px); } 50% { transform: translate(300px, 46px); } to { transform: translate(680px, 40px); } }
+.world.tall .bird { animation-name: flyTall; }
+@keyframes flyTall { from { transform: translate(-40px, 120px); } 50% { transform: translate(300px, 90px); } to { transform: translate(660px, 140px); } }
+.world.tall .cloud { width: 26%; }
+.world.tall .cloud.c2 { width: 20%; }
 
 /* Ecosystem: reserves live in the side column on wide screens. */
 #screen-ecosystem .layout > aside { display: flex; flex-direction: column; gap: 10px; }
@@ -1245,3 +1251,14 @@ body.age-young .scene { height: clamp(120px, 21vh, 210px); }
     #screen-chemistry.kid-mode .layout > .stack > .panel { grid-column: 1 / -1; }
     #screen-chemistry .tray-label .muted { display: none; }
 }
+
+/* Phones: keep the place card to three short rows so the map gets the room. */
+@media (max-width: 760px) {
+    .loc-card .eyebrow { font-size: .72rem; }
+    .loc-card .loc-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+    .loc-card .loc-info .eyebrow { flex-basis: 100%; }
+    .loc-card .game-meta { flex-wrap: nowrap; gap: 6px; }
+    .loc-card .game-meta .chip:not(.level-pick) { display: none; }
+    .loc-card .loc-actions .btn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-inline: 10px; }
+}
+@media (max-width: 420px) { .enter-place { display: none; } }

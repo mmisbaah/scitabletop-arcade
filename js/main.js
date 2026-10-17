@@ -11,7 +11,7 @@ import { AGES, ageGroup, isYoung, setAge } from './core/age.js';
 import { mascotSVG } from './core/art.js';
 import { speak, canSpeak } from './core/speech.js';
 import { reduced } from './core/anim.js';
-import { PLACES, renderWorld, walkTo, walkerAt, placeWalker, centerOnWalker } from './world/world.js';
+import { PLACES, renderWorld, walkTo, walkerAt, placeWalker, onLayoutChange } from './world/world.js';
 import * as chemistry from './games/chemistry.js';
 import * as ecosystem from './games/ecosystem.js';
 import * as immune from './games/immune.js';
@@ -150,7 +150,7 @@ function renderLocCard(key) {
             </div>
         </div>
         <div class="loc-actions">
-            <button class="btn btn-primary" data-action="app:enter" data-arg="${key}">${icon('play')}Enter ${i.place.split(' ')[1] ?? ''}</button>
+            <button class="btn btn-primary" data-action="app:enter" data-arg="${key}">${icon('play')}Enter<span class="enter-place">${i.place.split(' ')[1] ?? ''}</span></button>
             <button class="btn" data-action="app:rules" data-arg="${key}">${icon('circle-help')}How to play</button>
         </div>`;
     refreshIcons(card);
@@ -192,7 +192,6 @@ function renderHub() {
         avatar: AGES[ageGroup()].emoji,
     });
     renderLocCard(walkerAt());
-    requestAnimationFrame(centerOnWalker);
     $('hub-ach-count').textContent = `${unlocked} of ${ACHIEVEMENTS.length} unlocked`;
     $('hub-achievements').innerHTML = ACHIEVEMENTS.map((a) => `
         <div class="achievement ${isUnlocked(a.id) ? 'on' : ''}">
@@ -413,6 +412,7 @@ window.addEventListener('hashchange', () => go(location.hash.slice(1), { push: f
 const syncBar = () => document.documentElement.style.setProperty('--bar-h', `${document.querySelector('.app-bar').offsetHeight}px`);
 syncBar();
 window.addEventListener('resize', syncBar);
+onLayoutChange(() => { if (!$('screen-hub').hidden) renderHub(); });
 document.fonts?.ready.then(syncBar);
 
 document.body.classList.toggle('can-speak', canSpeak());
